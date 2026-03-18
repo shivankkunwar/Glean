@@ -1,5 +1,7 @@
 import { defineEventHandler, getQuery } from 'h3';
 import { getDb } from '../utils/db';
+import { getValidatedPage, getValidatedLimit, getValidatedCategoryId } from '../utils/validation';
+import { MAX_PAGE_LIMIT } from '../utils/constants';
 
 type Row = {
   id: number;
@@ -12,6 +14,8 @@ type Row = {
   domain: string | null;
   source_type: string | null;
   status: string;
+  ai_status: string | null;
+  summary: string | null;
   category_id: number | null;
   category_name: string | null;
   category_color: string | null;
@@ -23,10 +27,10 @@ export default defineEventHandler((event) => {
   const { db, client } = getDb();
   const query = getQuery(event);
 
-  const page = Number(query.page ?? 1);
-  const limit = Math.min(Number(query.limit ?? 24), 60);
-  const offset = (Math.max(page, 1) - 1) * limit;
-  const categoryId = Number(query.categoryId ?? NaN);
+  const page = getValidatedPage(query);
+  const limit = getValidatedLimit(query, MAX_PAGE_LIMIT);
+  const offset = (page - 1) * limit;
+  const categoryId = getValidatedCategoryId(query);
 
   const baseSelect = `
     SELECT
@@ -40,6 +44,8 @@ export default defineEventHandler((event) => {
       b.domain,
       b.source_type,
       b.status,
+      b.ai_status,
+      b.summary,
       b.category_id,
       c.name AS category_name,
       c.color AS category_color,
@@ -50,7 +56,7 @@ export default defineEventHandler((event) => {
     LEFT JOIN categories c ON c.id = b.category_id
   `;
 
-  const filter = Number.isFinite(categoryId) ? ' WHERE b.category_id = @categoryId ' : '';
+  const filter = categoryId ? ' WHERE b.category_id = @categoryId ' : '';
   const rows = client
     .prepare(`${baseSelect}${filter} ORDER BY b.created_at DESC LIMIT @limit OFFSET @offset`)
     .all({ categoryId, limit, offset }) as Row[];
@@ -82,6 +88,8 @@ export default defineEventHandler((event) => {
     domain: row.domain,
     sourceType: row.source_type,
     status: row.status,
+    aiStatus: row.ai_status,
+    summary: row.summary,
     categoryId: row.category_id,
     category: row.category_name
       ? {

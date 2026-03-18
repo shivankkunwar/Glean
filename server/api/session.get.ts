@@ -1,6 +1,5 @@
 import { createError, defineEventHandler, getCookie } from 'h3';
-import { isSessionValid } from '../utils/auth';
-import { AUTH_COOKIE } from '../utils/auth';
+import { isSessionValid, AUTH_COOKIE } from '../utils/auth';
 
 export default defineEventHandler((event) => {
   if (!isSessionValid(getCookie(event, AUTH_COOKIE))) {

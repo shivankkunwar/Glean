@@ -1,9 +1,10 @@
 import { defineEventHandler, getRouterParam } from 'h3';
 import { getDb } from '../../utils/db';
+import { getValidatedId } from '../../utils/validation';
 
 export default defineEventHandler((event) => {
-  const id = Number(getRouterParam(event, 'id'));
-  if (!Number.isFinite(id)) {
+  const id = getValidatedId(event);
+  if (!id) {
     return { statusCode: 400, message: 'Invalid bookmark id' };
   }
 
@@ -26,6 +27,10 @@ export default defineEventHandler((event) => {
     .prepare('SELECT id, name, source, confidence FROM tags WHERE bookmark_id = @id ORDER BY id DESC')
     .all({ id }) as Array<{ id: number; name: string; source: string; confidence: number }>;
 
+  const artifacts = client
+    .prepare('SELECT id, kind, value_json, provider, model, version, confidence, skipped, reason, created_at FROM bookmark_ai_artifacts WHERE bookmark_id = @id ORDER BY id DESC')
+    .all({ id }) as Array<{ id: number; kind: string; value_json: string; provider: string; model: string; version: string; confidence: number; skipped: number; reason: string | null; created_at: string }>;
+
   return {
     ...bookmark,
     category: bookmark.category_name
@@ -36,6 +41,20 @@ export default defineEventHandler((event) => {
           icon: bookmark.category_icon
         }
       : null,
-    tags
+    tags,
+    aiStatus: bookmark.ai_status,
+    summary: bookmark.summary,
+    aiArtifacts: artifacts.map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      value: JSON.parse(a.value_json ?? '{}'),
+      provider: a.provider,
+      model: a.model,
+      version: a.version,
+      confidence: a.confidence,
+      skipped: Boolean(a.skipped),
+      reason: a.reason,
+      createdAt: a.created_at
+    }))
   };
 });

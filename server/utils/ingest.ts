@@ -3,7 +3,7 @@ import { readBody } from 'h3';
 import { getDb } from './db';
 import { hashUrl } from './hash';
 import { enqueueJob } from './queue';
-import { bookmarks } from '../db/schema';
+import { normalizeTwitterUrl } from './extract';
 
 const payloadSchema = z.object({
   url: z
@@ -22,10 +22,31 @@ function normalizeIncomingUrl(url: string): string {
   if (!maybe) {
     return maybe;
   }
-  if (/^https?:\/\//i.test(maybe)) {
-    return maybe;
+  
+  // Add protocol if missing
+  let normalized = maybe;
+  if (!/^https?:\/\//i.test(normalized)) {
+    normalized = `https://${normalized}`;
   }
-  return `https://${maybe}`;
+  
+  // Normalize Twitter/X URLs to remove tracking parameters
+  normalized = normalizeTwitterUrl(normalized);
+  
+  return normalized;
+}
+
+function detectSourceType(url: string): 'youtube' | 'twitter' | 'github' | 'generic' {
+  const hostname = new URL(url).hostname;
+  if (/youtube\.com$|youtu\.be$/.test(hostname)) {
+    return 'youtube';
+  }
+  if (/x\.com$|twitter\.com$/.test(hostname)) {
+    return 'twitter';
+  }
+  if (/github\.com$/.test(hostname)) {
+    return 'github';
+  }
+  return 'generic';
 }
 
 export async function parseIngestBody(event: Parameters<typeof readBody>[0]) {
@@ -48,7 +69,7 @@ export function normalizeIngestPayload(input: z.infer<typeof payloadSchema>) {
 }
 
 export function ingestUrl(payload: ReturnType<typeof normalizeIngestPayload>) {
-  const { db, client } = getDb();
+  const { client } = getDb();
   const normalized = payload.url;
   const urlHash = hashUrl(normalized);
   const existing = client
@@ -64,6 +85,7 @@ export function ingestUrl(payload: ReturnType<typeof normalizeIngestPayload>) {
   }
 
   const domain = new URL(normalized).hostname;
+  const sourceType = detectSourceType(normalized);
   const result = client
     .prepare(
       `INSERT INTO bookmarks (
@@ -71,6 +93,7 @@ export function ingestUrl(payload: ReturnType<typeof normalizeIngestPayload>) {
       url_hash,
       category_id,
       title,
+      domain,
       source_type,
       status,
       description
@@ -79,7 +102,8 @@ export function ingestUrl(payload: ReturnType<typeof normalizeIngestPayload>) {
       @urlHash,
       @categoryId,
       @title,
-      'generic',
+      @domain,
+      @sourceType,
       'pending',
       @description
     )`
@@ -89,6 +113,8 @@ export function ingestUrl(payload: ReturnType<typeof normalizeIngestPayload>) {
       urlHash,
       categoryId: payload.categoryId ?? null,
       title: payload.sourceMeta.titleHint ?? null,
+      domain,
+      sourceType,
       description: payload.sourceMeta.textHint ?? null
     });
 
@@ -105,12 +131,4 @@ export function ingestUrl(payload: ReturnType<typeof normalizeIngestPayload>) {
   enqueueJob('fetch', bookmarkId, { url: normalized });
 
   return { id: bookmarkId, status: 'pending', duplicate: false };
-}
-
-export function getDefaultUncategorizedCategoryId(): number | null {
-  const { client } = getDb();
-  const row = client
-    .prepare("SELECT id FROM categories WHERE name = 'Uncategorized' LIMIT 1")
-    .get() as { id: number } | undefined;
-  return row?.id ?? null;
 }

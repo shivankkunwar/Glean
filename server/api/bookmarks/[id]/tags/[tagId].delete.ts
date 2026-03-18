@@ -1,11 +1,12 @@
 import { defineEventHandler, getRouterParam } from 'h3';
 import { getDb } from '../../../../utils/db';
+import { getValidatedId } from '../../../../utils/validation';
 
 export default defineEventHandler((event) => {
-  const bookmarkId = Number(getRouterParam(event, 'id'));
-  const tagId = Number(getRouterParam(event, 'tagId'));
+  const bookmarkId = getValidatedId(event, 'id');
+  const tagId = getValidatedId(event, 'tagId');
 
-  if (!Number.isFinite(bookmarkId) || !Number.isFinite(tagId)) {
+  if (!bookmarkId || !tagId) {
     return { statusCode: 400, message: 'Invalid ids' };
   }
 

@@ -4,7 +4,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   try {
-    const session = await $fetch('/api/session', { retry: false });
+    const headers = process.server ? useRequestHeaders(['cookie']) : undefined;
+    const session = await $fetch('/api/session', {
+      retry: false,
+      headers,
+      credentials: 'include'
+    });
     if (session && (session as { authenticated: boolean }).authenticated) {
       return;
     }

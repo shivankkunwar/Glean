@@ -1,9 +1,10 @@
 import { defineEventHandler, getRouterParam } from 'h3';
 import { getDb } from '../../utils/db';
+import { getValidatedId } from '../../utils/validation';
 
 export default defineEventHandler((event) => {
-  const id = Number(getRouterParam(event, 'id'));
-  if (!Number.isFinite(id)) {
+  const id = getValidatedId(event);
+  if (!id) {
     return { statusCode: 400, message: 'Invalid bookmark id' };
   }
 

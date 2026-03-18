@@ -36,6 +36,22 @@ Optional overrides:
 - `DATABASE_PATH` (default `./glean.db`)
 - `GLEAN_SESSION_TOKEN` (custom session token)
 
+Optional AI (free-only profile by default):
+
+- `AI_PROVIDER` (`auto` or `openrouter`, default `auto`)
+- `AI_COST_MODE` (default `free-only`)
+- `AI_EMBED_PROVIDER` (`gemini` default)
+- `AI_OPENROUTER_API_KEY`
+- `AI_OPENROUTER_CLASSIFY_MODEL` (default `nvidia/nemotron-3-super-120b-a12b:free`)
+- `AI_OPENROUTER_SUMMARY_MODEL` (default `nvidia/nemotron-3-super-120b-a12b:free`)
+- `AI_OPENROUTER_CLASSIFY_FALLBACKS` (priority order, comma-separated)
+- `AI_OPENROUTER_SUMMARY_FALLBACKS` (priority order, comma-separated)
+- `GEMINI_API_KEY`
+- `AI_GEMINI_EMBED_MODEL` (default `gemini-embedding-2-preview`) - Latest multimodal embedding model
+- `AI_CLASSIFY_PAYLOAD_TOKENS`, `AI_SUMMARIZE_PAYLOAD_TOKENS`, `AI_EMBED_PAYLOAD_TOKENS`
+
+If keys are missing, AI stages should skip and the app remains fully usable with keyword search.
+
 ## Scripts
 
 ```bash

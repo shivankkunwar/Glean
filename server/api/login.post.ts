@@ -1,5 +1,4 @@
-import { setCookie } from 'h3';
-import { defineEventHandler, readBody } from 'h3';
+import { defineEventHandler, readBody, setCookie } from 'h3';
 import { verifyPassword, AUTH_COOKIE, getSessionToken } from '../utils/auth';
 
 export default defineEventHandler(async (event) => {

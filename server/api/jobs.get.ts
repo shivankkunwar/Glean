@@ -3,7 +3,7 @@ import { getDb } from '../utils/db';
 
 type JobRow = {
   id: number;
-  type: 'fetch' | 'embed' | 'classify';
+  type: 'fetch' | 'normalize' | 'classify' | 'summarize' | 'embed' | 'reindex';
   bookmark_id: number;
   status: 'pending' | 'processing' | 'done' | 'failed';
   payload: string | null;

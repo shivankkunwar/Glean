@@ -8,10 +8,19 @@
       <header>
         <h1>{{ bookmark.title || 'Untitled' }}</h1>
         <p class="muted">{{ bookmark.domain }}</p>
-        <a :href="bookmark.url" target="_blank" rel="noreferrer" class="primary">Open Source</a>
+        <div class="actions-row">
+          <a :href="bookmark.url" target="_blank" rel="noreferrer" class="primary">Open Source</a>
+          <button class="ghost" @click="reprocess" :disabled="reprocessing">
+            {{ reprocessing ? 'Reprocessing…' : 'Reprocess' }}
+          </button>
+        </div>
       </header>
 
-      <p>{{ bookmark.description || 'No description extracted yet.' }}</p>
+      <div class="content-section">
+        <p v-if="bookmark.content" class="full-content" style="white-space: pre-wrap;">{{ bookmark.content }}</p>
+        <p v-else-if="bookmark.description">{{ bookmark.description }}</p>
+        <p v-else class="muted">No description extracted yet.</p>
+      </div>
 
       <form class="save-form" @submit.prevent="addTag">
         <input v-model="newTag" placeholder="Add tag" />
@@ -37,6 +46,7 @@ type BookmarkDetail = {
   url: string;
   domain: string;
   description: string | null;
+  content: string | null;
 };
 
 const route = useRoute();
@@ -44,6 +54,7 @@ const bookmark = ref<BookmarkDetail | null>(null);
 const tags = ref<Array<{ id: number; name: string }>>([]);
 const newTag = ref('');
 const loading = ref(false);
+const reprocessing = ref(false);
 
 const id = Number(route.params.id);
 
@@ -62,10 +73,24 @@ async function load() {
     title: payload.title,
     url: payload.url,
     domain: payload.domain,
-    description: payload.description
+    description: payload.description,
+    content: payload.content
   };
   tags.value = (payload.tags || []).map((tag: { id: number; name: string }) => ({ id: tag.id, name: tag.name }));
   loading.value = false;
+}
+
+async function reprocess() {
+  if (reprocessing.value) return;
+  reprocessing.value = true;
+  try {
+    await $fetch(`/api/bookmarks/${id}/reprocess`, { method: 'POST' });
+    // Wait a bit for processing, then reload
+    await new Promise(r => setTimeout(r, 3000));
+    await load();
+  } finally {
+    reprocessing.value = false;
+  }
 }
 
 async function addTag() {
@@ -91,3 +116,22 @@ async function removeTag(tagId: number) {
 
 await load();
 </script>
+
+<style scoped>
+.content-section {
+  margin: 1rem 0;
+}
+
+.full-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+</style>
