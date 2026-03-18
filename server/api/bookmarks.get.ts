@@ -22,6 +22,7 @@ type Row = {
   category_icon: string | null;
   created_at: string;
   updated_at: string;
+  is_pinned: number;
 };
 export default defineEventHandler((event) => {
   const { db, client } = getDb();
@@ -51,14 +52,22 @@ export default defineEventHandler((event) => {
       c.color AS category_color,
       c.icon AS category_icon,
       b.created_at,
-      b.updated_at
+      b.updated_at,
+      b.is_pinned
     FROM bookmarks b
     LEFT JOIN categories c ON c.id = b.category_id
   `;
 
-  const filter = categoryId ? ' WHERE b.category_id = @categoryId ' : '';
+  const pinnedOnly = query.pinned === 'true';
+  const showPinned = query.showPinned === 'true';
+
+  let filter = categoryId ? ' WHERE b.category_id = @categoryId ' : '';
+  if (pinnedOnly) {
+    filter = filter ? ' WHERE b.is_pinned = 1 ' : ' WHERE b.is_pinned = 1 ';
+  }
+
   const rows = client
-    .prepare(`${baseSelect}${filter} ORDER BY b.created_at DESC LIMIT @limit OFFSET @offset`)
+    .prepare(`${baseSelect}${filter} ORDER BY ${showPinned ? 'b.is_pinned DESC, ' : ''} b.created_at DESC LIMIT @limit OFFSET @offset`)
     .all({ categoryId, limit, offset }) as Row[];
 
   const totalRow =
@@ -91,6 +100,7 @@ export default defineEventHandler((event) => {
     aiStatus: row.ai_status,
     summary: row.summary,
     categoryId: row.category_id,
+    isPinned: row.is_pinned === 1,
     category: row.category_name
       ? {
           id: row.category_id,

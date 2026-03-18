@@ -37,6 +37,7 @@ function ensureSchemaExtensions(client: Database) {
   ensureColumn(client, 'bookmarks', 'summary_model', 'TEXT');
   ensureColumn(client, 'bookmarks', 'artifact_policy_version', 'TEXT');
   ensureColumn(client, 'bookmarks', 'source_metadata', 'TEXT'); // JSON blob for source-specific metadata
+  ensureColumn(client, 'bookmarks', 'is_pinned', 'INTEGER NOT NULL DEFAULT 0'); // Pinned bookmark flag
 
   client.exec(
     `
