@@ -4,6 +4,8 @@ import { resolveProvider } from '../utils/ai';
 import { findNearestNeighbors } from '../utils/embeddings';
 import { executeKeywordSearch, filterByCategoryId } from '../utils/search';
 import { MAX_PAGE_LIMIT, MAX_EMBEDDING_RESULTS, MIN_SIMILARITY_SCORE } from '../utils/constants';
+import { getCookie } from 'h3';
+import { isSessionValid, AUTH_COOKIE } from '../utils/auth';
 
 function reciprocalRankFusion(
   ftsRanks: Array<{ id: number; rank: number }>,
@@ -47,7 +49,12 @@ async function performSemanticSearch(q: string, categoryId: number | null, limit
     return executeKeywordSearch({ query: q, categoryId: categoryId ?? undefined, limit, offset });
   }
 
+  // Fix vectors possibly undefined
   const queryVector = embedResult.vectors[0];
+  if (!queryVector) {
+    return executeKeywordSearch({ query: q, categoryId: categoryId ?? undefined, limit, offset });
+  }
+
   const vectorResults = findNearestNeighbors(queryVector, MAX_EMBEDDING_RESULTS, MIN_SIMILARITY_SCORE);
 
   let filteredResults = categoryId ? filterByCategoryId(vectorResults, categoryId) : vectorResults;
@@ -102,7 +109,7 @@ async function performHybridSearch(q: string, categoryId: number | null, limit: 
   const embedResult = await provider.embed([q]);
 
   let vectorResults: Array<{ bookmarkId: number; score: number }> = [];
-  if (!embedResult.skipped && embedResult.vectors.length && embedResult.vectors[0].length) {
+  if (!embedResult.skipped && embedResult.vectors.length && embedResult.vectors[0]) {
     vectorResults = findNearestNeighbors(embedResult.vectors[0], MAX_EMBEDDING_RESULTS, MIN_SIMILARITY_SCORE);
   }
 
@@ -155,7 +162,13 @@ async function performHybridSearch(q: string, categoryId: number | null, limit: 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const q = String(query.q || '').trim();
-  const mode = String(query.mode || 'keyword');
+
+  // Public users (no valid session) are restricted to keyword search only.
+  // This prevents AI embedding API quota from being consumed by anonymous traffic.
+  const token = getCookie(event, AUTH_COOKIE);
+  const isAuthenticated = isSessionValid(token);
+  const rawMode = String(query.mode || 'keyword');
+  const mode = isAuthenticated ? rawMode : 'keyword';
   const page = Number(query.page ?? 1);
   const limit = Math.min(Number(query.limit ?? 24), MAX_PAGE_LIMIT);
   const offset = (Math.max(page, 1) - 1) * limit;

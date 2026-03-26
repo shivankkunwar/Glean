@@ -122,6 +122,9 @@ function trySearchStrategies(
   limit: number,
   offset: number
 ): { items: SearchResult[]; total: number; strategy: string } {
+  // Sanitize for word-based strategies (2 & 3) to prevent syntax errors with '\"', '\', etc.
+  const cleanQuery = query.toLowerCase().replace(/[^\w\s\-]/g, ' ').trim();
+
   const strategies = [
     // Strategy 1: Direct query with prefix matching
     () => {
@@ -155,7 +158,7 @@ function trySearchStrategies(
     
     // Strategy 2: AND-based query for multi-word
     () => {
-      const words = query.toLowerCase().trim().split(/\s+/).filter(w => w.length > 1);
+      const words = cleanQuery.split(/\s+/).filter(w => w.length > 1);
       if (words.length < 2) return null;
       
       const andQuery = words.join(' AND ');
@@ -187,7 +190,7 @@ function trySearchStrategies(
     
     // Strategy 3: OR-based query for partial matching
     () => {
-      const words = query.toLowerCase().trim().split(/\s+/).filter(w => w.length > 1);
+      const words = cleanQuery.split(/\s+/).filter(w => w.length > 1);
       if (words.length < 2) return null;
       
       const orQuery = words.join(' OR ');
@@ -229,8 +232,8 @@ function trySearchStrategies(
       const strategyQuery = result.strategy === 'prefix' 
         ? buildFtsQuery(query)
         : result.strategy === 'and'
-          ? query.toLowerCase().trim().split(/\s+/).filter(w => w.length > 1).join(' AND ')
-          : query.toLowerCase().trim().split(/\s+/).filter(w => w.length > 1).join(' OR ');
+          ? cleanQuery.split(/\s+/).filter(w => w.length > 1).join(' AND ')
+          : cleanQuery.split(/\s+/).filter(w => w.length > 1).join(' OR ');
       
       const totalRow = (client
         .prepare(

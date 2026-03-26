@@ -19,6 +19,15 @@ export const PUBLIC_ROUTES = new Set([
   '/manifest.webmanifest'
 ]);
 
+// GET requests to these prefixes are publicly readable (no session needed).
+// Public users get keyword-only search — semantic/hybrid modes require auth.
+export const PUBLIC_READ_PREFIXES = [
+  '/api/bookmarks',
+  '/api/categories',
+  '/api/tags',
+  '/api/search',
+];
+
 export const DEFAULT_CATEGORIES: Array<{ name: string; color: string; icon: string }> = [
   { name: 'Uncategorized', color: '#f3f4f6', icon: '📌' },
   { name: 'Inspiration', color: '#fee2e2', icon: '✨' },

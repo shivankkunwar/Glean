@@ -69,6 +69,57 @@ export default defineEventHandler((event) => {
     bookmark_url: string | null;
   }>;
 
+  // Skip rate per AI artifact kind
+  const skipRates = client.prepare(`
+    SELECT kind,
+      COUNT(*) as total,
+      SUM(CASE WHEN skipped = 1 THEN 1 ELSE 0 END) as skipped_count
+    FROM bookmark_ai_artifacts
+    GROUP BY kind
+    ORDER BY kind
+  `).all() as Array<{ kind: string; total: number; skipped_count: number }>;
+
+  // Hourly throughput (last 24 hours) for Sparkline
+  const hourlyData = client.prepare(`
+    SELECT 
+      strftime('%Y-%m-%d %H:00:00', created_at) as hour,
+      COUNT(*) as count
+    FROM jobs
+    WHERE status = 'done'
+      AND created_at >= datetime('now', '-24 hours')
+    GROUP BY hour
+    ORDER BY hour ASC
+  `).all() as Array<{ hour: string; count: number }>;
+
+  const hourlyThroughput = [];
+  let total24h = 0;
+  const now = new Date();
+  for (let i = 23; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const hourStr = `${yyyy}-${mm}-${dd} ${hh}:00:00`;
+    
+    const match = hourlyData.find(r => r.hour === hourStr);
+    const count = match ? match.count : 0;
+    total24h += count;
+    
+    hourlyThroughput.push({
+      time: hourStr,
+      count
+    });
+  }
+
+  // Stale jobs stuck in processing for more than 3 minutes
+  const staleJobs = client.prepare(`
+    SELECT COUNT(*) as count
+    FROM jobs
+    WHERE status = 'processing'
+      AND locked_at < datetime('now', '-3 minutes')
+  `).get() as { count: number };
+
   // Failed jobs with errors
   const failedJobs = client.prepare(`
     SELECT 
@@ -113,9 +164,18 @@ export default defineEventHandler((event) => {
     },
     jobQueue: jobStats.reduce((acc, row) => {
       if (!acc[row.type]) acc[row.type] = {};
-      acc[row.type][row.status] = row.count;
+      (acc[row.type] as Record<string, number>)[row.status] = row.count;
       return acc;
     }, {} as Record<string, Record<string, number>>),
+    skipRates: skipRates.map(r => ({
+      kind: r.kind,
+      total: r.total,
+      skipped: r.skipped_count,
+      skipRate: r.total > 0 ? Math.round((r.skipped_count / r.total) * 100) : 0
+    })),
+    throughput24h: total24h,
+    hourlyThroughput,
+    staleJobCount: staleJobs.count,
     recentArtifacts: recentArtifacts.map(a => ({
       id: a.id,
       bookmarkId: a.bookmark_id,
@@ -145,8 +205,10 @@ export default defineEventHandler((event) => {
       } : null
     })),
     summary: {
-      healthy: stats.failed === 0 && (jobStats.find(j => j.status === 'failed')?.count || 0) === 0,
-      message: stats.failed > 0 
+      healthy: stats.failed === 0 && (jobStats.find(j => j.status === 'failed')?.count || 0) === 0 && staleJobs.count === 0,
+      message: staleJobs.count > 0
+        ? `${staleJobs.count} job(s) appear stuck in processing`
+        : stats.failed > 0 
         ? `${stats.failed} bookmarks have failed AI processing`
         : (stats.pending > 0 || stats.in_progress > 0)
         ? `Processing: ${stats.pending} pending, ${stats.in_progress} in progress`

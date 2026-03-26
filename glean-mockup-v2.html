@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glean UI Redesign V2 Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./glean-mockup-v2.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="container app-header-inner">
+      <a href="#" class="logo">Glean</a>
+      <div class="header-actions">
+        <a href="#" class="collections-link">Collections</a>
+        <span class="avatar" aria-label="Profile">SK</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <nav class="state-switcher" aria-label="Mockup states">
+      <ul class="state-tabs" role="tablist" aria-label="Switch redesign views">
+        <li><button type="button" class="state-tab" role="tab" data-view-target="dashboard" aria-selected="true">Dashboard</button></li>
+        <li><button type="button" class="state-tab" role="tab" data-view-target="filtered" aria-selected="false">Filtered</button></li>
+        <li><button type="button" class="state-tab" role="tab" data-view-target="search" aria-selected="false">Search</button></li>
+        <li><button type="button" class="state-tab" role="tab" data-view-target="empty" aria-selected="false">Empty State</button></li>
+        <li><button type="button" class="state-tab" role="tab" data-view-target="mobile" aria-selected="false">Mobile</button></li>
+      </ul>
+    </nav>
+
+    <section id="dashboard" class="page-section is-active">
+      <p class="section-overline label-uppercase">All Items</p>
+      <h1 class="section-title">Remember everything. Organize nothing.</h1>
+      <p class="section-copy">A warm, living knowledge vault with mixed card rhythm and progressive disclosure.</p>
+
+      <div class="search-block">
+        <form class="search-shell" role="search" aria-label="Search your saved items">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input class="search-input" type="text" data-primary-search="true" placeholder="Search your saved items...">
+          <button type="button" class="search-clear" aria-label="Clear search">x</button>
+          <span class="search-shortcut">Ctrl+K</span>
+        </form>
+        <p id="search-hint" class="search-hint">Tip: Try searching with natural language.</p>
+      </div>
+
+      <div id="filter-onboarding" class="onboarding-tooltip" role="status" aria-live="polite">
+        <span>Filter by type. As you save more, this gets faster.</span>
+      </div>
+
+      <nav class="filter-pills" role="tablist" aria-label="Filter by content type">
+        <button type="button" class="filter-pill" role="tab" aria-selected="true">All</button>
+        <button type="button" class="filter-pill" role="tab" aria-selected="false">Articles</button>
+        <button type="button" class="filter-pill" role="tab" aria-selected="false">Notes</button>
+        <button type="button" class="filter-pill" role="tab" aria-selected="false">Videos</button>
+        <button type="button" class="filter-pill" role="tab" aria-selected="false">Books</button>
+      </nav>
+
+      <div id="dashboard-grid" class="content-grid">
+        <article class="card card--feature" role="article" aria-labelledby="card-feature-title">
+          <div class="card-image">
+            <div class="card-gradient" style="background: var(--gradient-terracotta);"></div>
+            <div class="card-actions">
+              <button type="button" class="card-action" aria-label="Pin item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 17v5"></path><path d="m5 7 14 0"></path><path d="m8 7 1-4h6l1 4"></path><path d="m7 7 2 8h6l2-8"></path></svg>
+              </button>
+              <button type="button" class="card-action" aria-label="Delete item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="m19 6-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <h3 id="card-feature-title" class="card-title">The Art of Intentional Reading in a Hyperlinked World</h3>
+            <p class="card-excerpt">A practical framework for capturing ideas without collecting noise. Focus on retrieval, not hoarding.</p>
+            <footer class="card-meta">
+              <span class="card-source">nesslabs.com</span>
+              <time class="card-date">3 days ago</time>
+            </footer>
+          </div>
+        </article>
+
+        <article class="card card--standard" role="article" aria-labelledby="card-article-a-title">
+          <div class="card-image">
+            <div class="card-gradient" style="background: var(--gradient-ochre);"></div>
+            <div class="card-actions">
+              <button type="button" class="card-action" aria-label="Pin item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 17v5"></path><path d="m5 7 14 0"></path><path d="m8 7 1-4h6l1 4"></path><path d="m7 7 2 8h6l2-8"></path></svg>
+              </button>
+              <button type="button" class="card-action" aria-label="Delete item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="m19 6-1 14H6L5 6"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <h3 id="card-article-a-title" class="card-title">Notes on Deep Work</h3>
+            <p class="card-excerpt">Attention is finite. Design your day for long stretches of uninterrupted thought.</p>
+            <footer class="card-meta">
+              <span class="card-source">calnewport.com</span>
+              <time class="card-date">1 week ago</time>
+            </footer>
+          </div>
+        </article>
+
+        <article class="card card--standard card--video" role="article" aria-labelledby="card-video-title">
+          <div class="card-image">
+            <div class="card-gradient" style="background: var(--gradient-slate);"></div>
+            <span class="video-play" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+            </span>
+            <span class="video-duration numeric">24:36</span>
+          </div>
+          <div class="card-body">
+            <h3 id="card-video-title" class="card-title">Designing the Calm Product Stack</h3>
+            <p class="card-excerpt">How smaller teams ship faster by reducing dashboard clutter and ritualizing handoffs.</p>
+            <footer class="card-meta">
+              <span class="card-source">youtube.com</span>
+              <time class="card-date">5 days ago</time>
+            </footer>
+          </div>
+        </article>
+
+        <article class="card card--compact card--note" role="article" aria-labelledby="card-note-title">
+          <span class="note-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+          </span>
+          <div class="card-body">
+            <h3 id="card-note-title" class="card-title">Quick thought</h3>
+            <p class="card-excerpt">Good knowledge systems reward retrieval speed, not collection volume. Keep inputs small and reusable.</p>
+            <footer class="card-meta">
+              <time class="card-date">2 hours ago</time>
+            </footer>
+          </div>
+        </article>
+
+        <article class="card card--wide card--product" role="article" aria-labelledby="card-product-title">
+          <div class="card-image">
+            <div class="card-gradient" style="background: var(--gradient-sand);"></div>
+          </div>
+          <div class="card-body">
+            <h3 id="card-product-title" class="card-title">Mechanical Keyboard K8 Pro</h3>
+            <p class="card-excerpt">Hot-swap 75% board tuned for long writing sessions and low-fatigue daily coding.</p>
+            <p class="product-price numeric">$199</p>
+            <span class="product-category">Electronics</span>
+          </div>
+        </article>
+
+        <article class="card card--standard card--quote" role="article" aria-labelledby="card-quote-title">
+          <div class="card-body">
+            <h3 id="card-quote-title" class="card-title">Quote</h3>
+            <p class="card-excerpt">The best memory tool is the one that gets out of your way before you notice it.</p>
+            <p class="card-quote-attribution">Author unknown</p>
+          </div>
+        </article>
+
+        <article class="card card--standard card--book" role="article" aria-labelledby="card-book-title">
+          <div class="card-image">
+            <div class="book-mock">
+              <div class="book-spine"></div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h3 id="card-book-title" class="card-title">How to Take Smart Notes</h3>
+            <p class="book-caption">by Sonke Ahrens</p>
+            <footer class="card-meta" style="margin-top: var(--space-3);">
+              <time class="card-date">1 month ago</time>
+            </footer>
+          </div>
+        </article>
+
+        <article class="card card--standard card--note" role="article" aria-labelledby="card-note-two-title">
+          <span class="note-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+          </span>
+          <div class="card-body">
+            <h3 id="card-note-two-title" class="card-title">Meeting transcript summary</h3>
+            <p class="card-excerpt">Launch scope: ship search confidence indicators and improve source extraction before broad release.</p>
+            <footer class="card-meta">
+              <time class="card-date">8 hours ago</time>
+            </footer>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="filtered" class="page-section">
+      <p class="section-overline label-uppercase">Filtered View</p>
+      <h2 class="section-title">12 Articles</h2>
+      <p class="section-copy">Uniform card sizing for one content type while preserving the warm editorial language.</p>
+
+      <div class="search-block">
+        <form class="search-shell" role="search" aria-label="Search articles">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input class="search-input" type="text" value="design systems">
+          <button type="button" class="search-clear" aria-label="Clear search">x</button>
+          <span class="search-shortcut">Ctrl+K</span>
+        </form>
+      </div>
+
+      <nav class="filter-pills" role="tablist" aria-label="Filter by content type">
+        <button type="button" class="filter-pill" role="tab" aria-selected="false">All</button>
+        <button type="button" class="filter-pill" role="tab" aria-selected="true">Articles</button>
+        <button type="button" class="filter-pill" role="tab" aria-selected="false">Notes</button>
+        <button type="button" class="filter-pill" role="tab" aria-selected="false">Videos</button>
+        <button type="button" class="filter-pill" role="tab" aria-selected="false">Books</button>
+      </nav>
+
+      <div class="content-grid">
+        <article class="card card--standard" role="article" aria-labelledby="f-card-1">
+          <div class="card-image"><div class="card-gradient" style="background: var(--gradient-terracotta);"></div></div>
+          <div class="card-body">
+            <h3 id="f-card-1" class="card-title">Designing for Focus</h3>
+            <p class="card-excerpt">Patterns for reducing context switching in busy product teams.</p>
+            <footer class="card-meta"><span class="card-source">linear.app</span><time class="card-date">1 week ago</time></footer>
+          </div>
+        </article>
+        <article class="card card--standard" role="article" aria-labelledby="f-card-2">
+          <div class="card-image"><div class="card-gradient" style="background: var(--gradient-sage);"></div></div>
+          <div class="card-body">
+            <h3 id="f-card-2" class="card-title">Where Great Onboarding Starts</h3>
+            <p class="card-excerpt">Teach features only at the point of need and never all at once.</p>
+            <footer class="card-meta"><span class="card-source">uxcollective.com</span><time class="card-date">9 days ago</time></footer>
+          </div>
+        </article>
+        <article class="card card--standard" role="article" aria-labelledby="f-card-3">
+          <div class="card-image"><div class="card-gradient" style="background: var(--gradient-ochre);"></div></div>
+          <div class="card-body">
+            <h3 id="f-card-3" class="card-title">The New Rules of Product Documentation</h3>
+            <p class="card-excerpt">How teams use linked context instead of giant static documents.</p>
+            <footer class="card-meta"><span class="card-source">stripe.com</span><time class="card-date">2 weeks ago</time></footer>
+          </div>
+        </article>
+        <article class="card card--standard" role="article" aria-labelledby="f-card-4">
+          <div class="card-image"><div class="card-gradient" style="background: var(--gradient-slate);"></div></div>
+          <div class="card-body">
+            <h3 id="f-card-4" class="card-title">Memory as Product Infrastructure</h3>
+            <p class="card-excerpt">Teams that can retrieve fast can execute fast. Retrieval is strategy.</p>
+            <footer class="card-meta"><span class="card-source">a16z.com</span><time class="card-date">2 weeks ago</time></footer>
+          </div>
+        </article>
+        <article class="card card--standard" role="article" aria-labelledby="f-card-5">
+          <div class="card-image"><div class="card-gradient" style="background: var(--gradient-sand);"></div></div>
+          <div class="card-body">
+            <h3 id="f-card-5" class="card-title">Making Search Feel Instant</h3>
+            <p class="card-excerpt">Latency budgets, graceful fallbacks, and confidence scoring.</p>
+            <footer class="card-meta"><span class="card-source">vercel.com</span><time class="card-date">3 weeks ago</time></footer>
+          </div>
+        </article>
+        <article class="card card--standard" role="article" aria-labelledby="f-card-6">
+          <div class="card-image"><div class="card-gradient" style="background: var(--gradient-terracotta);"></div></div>
+          <div class="card-body">
+            <h3 id="f-card-6" class="card-title">Build Less, Teach Better</h3>
+            <p class="card-excerpt">Discovery and UX hints should feel native to the flow, not modal-heavy.</p>
+            <footer class="card-meta"><span class="card-source">figma.com</span><time class="card-date">4 weeks ago</time></footer>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="search" class="page-section">
+      <p class="section-overline label-uppercase">Search Results</p>
+      <h2 class="section-title">Context-first search</h2>
+      <p class="section-copy">Counter animates in, tags stagger in, and card density drops for scan speed.</p>
+
+      <div class="search-block">
+        <form class="search-shell" role="search" aria-label="Search results">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input class="search-input" type="text" value="design">
+          <button type="button" class="search-clear" aria-label="Clear search">x</button>
+          <span class="search-shortcut">Ctrl+K</span>
+        </form>
+      </div>
+
+      <div class="results-summary">
+        <span>Found</span>
+        <strong class="numeric" data-animate-number="4">0</strong>
+        <span>results for</span>
+        <strong class="result-query">'design'</strong>
+      </div>
+      <div class="result-tags" aria-hidden="true">
+        <span class="result-tag">2 Articles</span>
+        <span class="result-tag">1 Note</span>
+        <span class="result-tag">1 Book</span>
+      </div>
+
+      <div class="content-grid">
+        <article class="card card--standard" role="article" aria-labelledby="s-card-1">
+          <div class="card-image"><div class="card-gradient" style="background: var(--gradient-sage);"></div></div>
+          <div class="card-body">
+            <h3 id="s-card-1" class="card-title">Design Systems at Scale</h3>
+            <p class="card-excerpt">Cross-team governance, component ownership, and release gates that actually work.</p>
+            <footer class="card-meta"><span class="card-source">figma.com</span><time class="card-date">2 weeks ago</time></footer>
+          </div>
+        </article>
+        <article class="card card--standard" role="article" aria-labelledby="s-card-2">
+          <div class="card-image"><div class="card-gradient" style="background: var(--gradient-ochre);"></div></div>
+          <div class="card-body">
+            <h3 id="s-card-2" class="card-title">The Design of Everyday APIs</h3>
+            <p class="card-excerpt">Readability and interface predictability in developer tooling.</p>
+            <footer class="card-meta"><span class="card-source">martinfowler.com</span><time class="card-date">1 month ago</time></footer>
+          </div>
+        </article>
+        <article class="card card--standard card--note" role="article" aria-labelledby="s-card-3">
+          <span class="note-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+          </span>
+          <div class="card-body">
+            <h3 id="s-card-3" class="card-title">Design principles for Glean</h3>
+            <p class="card-excerpt">Content first. Warm surfaces. Every state transition should visibly travel, never teleport.</p>
+            <footer class="card-meta"><time class="card-date">3 days ago</time></footer>
+          </div>
+        </article>
+        <article class="card card--standard card--book" role="article" aria-labelledby="s-card-4">
+          <div class="card-image">
+            <div class="book-mock"><div class="book-spine"></div></div>
+          </div>
+          <div class="card-body">
+            <h3 id="s-card-4" class="card-title">Refactoring UI</h3>
+            <p class="book-caption">by Adam Wathan, Steve Schoger</p>
+            <footer class="card-meta" style="margin-top: var(--space-3);"><time class="card-date">2 months ago</time></footer>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="empty" class="page-section">
+      <p class="section-overline label-uppercase">Onboarding</p>
+      <h2 class="section-title">Your mind is empty.</h2>
+      <p class="section-copy">Start filling it. First action is explicit, secondary action is nearby, and the arrow points to the FAB gesture.</p>
+
+      <section class="empty-state">
+        <div class="empty-illustration" aria-hidden="true">
+          <svg viewBox="0 0 260 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="84" y="36" width="92" height="128" rx="8" fill="url(#book-bg)"></rect>
+            <rect x="92" y="44" width="76" height="112" rx="5" fill="oklch(99% 0.005 75 / 0.28)"></rect>
+            <rect x="102" y="72" width="56" height="5" rx="2.5" fill="oklch(70% 0.008 65 / 0.45)"></rect>
+            <rect x="102" y="84" width="44" height="5" rx="2.5" fill="oklch(70% 0.008 65 / 0.3)"></rect>
+            <rect x="102" y="96" width="52" height="5" rx="2.5" fill="oklch(70% 0.008 65 / 0.34)"></rect>
+            <circle cx="54" cy="92" r="11" fill="oklch(65% 0.07 150 / 0.7)"></circle>
+            <circle cx="210" cy="116" r="8" fill="oklch(62% 0.13 35 / 0.6)"></circle>
+            <circle cx="198" cy="70" r="6" fill="oklch(75% 0.08 75 / 0.6)"></circle>
+            <defs>
+              <linearGradient id="book-bg" x1="84" y1="36" x2="176" y2="164" gradientUnits="userSpaceOnUse">
+                <stop stop-color="oklch(72% 0.12 65)"></stop>
+                <stop offset="1" stop-color="oklch(56% 0.11 30)"></stop>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        <h1 class="empty-title">Your mind is empty.</h1>
+        <p class="empty-subtitle">Start filling it.</p>
+        <div class="empty-actions">
+          <button type="button" class="btn-primary trigger-save" data-action="save-first">Save your first item</button>
+          <button type="button" class="btn-ghost">Install browser extension</button>
+        </div>
+
+        <aside class="empty-hint-card">
+          <p class="label-uppercase">What you can save</p>
+          <ul class="empty-hint-list">
+            <li>Articles, videos, notes, books, and products in one stream.</li>
+            <li>No manual sorting required. Search and filters stay discoverable.</li>
+            <li>Card previews improve memory recall when revisiting later.</li>
+          </ul>
+        </aside>
+      </section>
+
+      <div class="empty-cta-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 6c5 0 9 4 9 9"></path>
+          <path d="M10 15h5v-5"></path>
+        </svg>
+      </div>
+    </section>
+
+    <section id="mobile" class="page-section">
+      <p class="section-overline label-uppercase">Mobile Preview</p>
+      <h2 class="section-title">Single-column, thumb-first</h2>
+      <p class="section-copy">Cards become full-width with smaller radius, pills are horizontally scrollable, and controls are reachable.</p>
+
+      <div class="phone-shell" aria-label="Mobile mockup">
+        <div class="phone-header">
+          <span class="logo">Glean</span>
+          <span class="avatar" aria-hidden="true">SK</span>
+        </div>
+        <div class="phone-content">
+          <form class="search-shell" role="search" aria-label="Search mobile items">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input class="search-input" type="text" placeholder="Search...">
+            <button type="button" class="search-clear" aria-label="Clear search">x</button>
+          </form>
+          <nav class="filter-pills" role="tablist" aria-label="Filter by content type">
+            <button type="button" class="filter-pill" role="tab" aria-selected="true">All</button>
+            <button type="button" class="filter-pill" role="tab" aria-selected="false">Articles</button>
+            <button type="button" class="filter-pill" role="tab" aria-selected="false">Notes</button>
+            <button type="button" class="filter-pill" role="tab" aria-selected="false">Videos</button>
+            <button type="button" class="filter-pill" role="tab" aria-selected="false">Books</button>
+          </nav>
+          <div class="phone-grid">
+            <article class="card" role="article" aria-labelledby="m-card-1">
+              <div class="card-image"><div class="card-gradient" style="background: var(--gradient-terracotta);"></div></div>
+              <div class="card-body">
+                <h3 id="m-card-1" class="card-title">Calm Product Writing</h3>
+                <p class="card-excerpt">Structure notes for reuse, not archival perfection.</p>
+                <footer class="card-meta"><span class="card-source">readwise.io</span><time class="card-date">2 days ago</time></footer>
+              </div>
+            </article>
+            <article class="card card--note" role="article" aria-labelledby="m-card-2">
+              <span class="note-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+              </span>
+              <div class="card-body">
+                <h3 id="m-card-2" class="card-title">Draft</h3>
+                <p class="card-excerpt">Ship retrieval speed first. Categorization can remain implicit unless it blocks recall.</p>
+                <footer class="card-meta"><time class="card-date">5 hours ago</time></footer>
+              </div>
+            </article>
+            <article class="card card--video" role="article" aria-labelledby="m-card-3">
+              <div class="card-image">
+                <div class="card-gradient" style="background: var(--gradient-slate);"></div>
+                <span class="video-play" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+                </span>
+                <span class="video-duration numeric">12:04</span>
+              </div>
+              <div class="card-body">
+                <h3 id="m-card-3" class="card-title">Making Search Trustworthy</h3>
+                <p class="card-excerpt">How to rank semantic matches and expose confidence to users.</p>
+                <footer class="card-meta"><span class="card-source">conference talk</span><time class="card-date">1 week ago</time></footer>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <button id="fab-main" class="fab trigger-save" type="button" aria-label="Save new item">
+    <svg class="fab-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+    <span class="fab-emoji" aria-hidden="true">&#127919;</span>
+  </button>
+
+  <div id="save-toast" class="save-toast" role="status" aria-live="polite">Saved to your vault.</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script>
+    (() => {
+      const header = document.querySelector(".app-header");
+      const tabs = document.querySelectorAll(".state-tab");
+      const sections = document.querySelectorAll(".page-section");
+      const tooltip = document.getElementById("filter-onboarding");
+      const toast = document.getElementById("save-toast");
+      const dashboardGrid = document.getElementById("dashboard-grid");
+      const searchHint = document.getElementById("search-hint");
+      const fab = document.getElementById("fab-main");
+
+      const updateHeader = () => {
+        header.classList.toggle("is-scrolled", window.scrollY > 40);
+      };
+
+      const showSection = (id) => {
+        sections.forEach((section) => {
+          section.classList.toggle("is-active", section.id === id);
+        });
+        tabs.forEach((tab) => {
+          tab.setAttribute("aria-selected", tab.dataset.viewTarget === id ? "true" : "false");
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      };
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => showSection(tab.dataset.viewTarget));
+      });
+
+      document.querySelectorAll(".filter-pills").forEach((tablist) => {
+        const pills = tablist.querySelectorAll(".filter-pill");
+        pills.forEach((pill) => {
+          pill.addEventListener("click", () => {
+            pills.forEach((candidate) => {
+              candidate.setAttribute("aria-selected", candidate === pill ? "true" : "false");
+            });
+          });
+        });
+      });
+
+      document.querySelectorAll(".search-shell").forEach((shell) => {
+        const input = shell.querySelector(".search-input");
+        const clear = shell.querySelector(".search-clear");
+        if (!input || !clear) {
+          return;
+        }
+
+        const syncClear = () => {
+          clear.classList.toggle("is-visible", input.value.trim().length > 0);
+        };
+
+        clear.addEventListener("click", () => {
+          input.value = "";
+          syncClear();
+          input.focus();
+        });
+
+        input.addEventListener("input", syncClear);
+        syncClear();
+
+        if (input.dataset.primarySearch === "true") {
+          let handled = false;
+          input.addEventListener("focus", () => {
+            if (handled || localStorage.getItem("glean-search-hint-v2")) {
+              return;
+            }
+            handled = true;
+            const original = input.placeholder;
+            input.placeholder = "Search...";
+            setTimeout(() => {
+              input.placeholder = "Try: 'articles about design'";
+              searchHint.textContent = "Hint unlocked: natural language works best.";
+            }, 180);
+            setTimeout(() => {
+              input.placeholder = original;
+            }, 1600);
+            localStorage.setItem("glean-search-hint-v2", "true");
+          }, { once: true });
+        }
+      });
+
+      const visitCount = Number(localStorage.getItem("glean-visit-count-v2") || "0") + 1;
+      localStorage.setItem("glean-visit-count-v2", String(visitCount));
+      if (visitCount > 1) {
+        setTimeout(() => {
+          document.querySelectorAll(".search-shortcut").forEach((badge) => {
+            badge.classList.add("is-visible");
+          });
+        }, 2000);
+      }
+
+      const showToast = (message) => {
+        toast.textContent = message;
+        toast.classList.add("is-visible");
+        setTimeout(() => toast.classList.remove("is-visible"), 2200);
+      };
+
+      const fireConfetti = () => {
+        if (typeof window.confetti !== "function") {
+          return;
+        }
+        window.confetti({ particleCount: 90, spread: 72, origin: { y: 0.62 } });
+      };
+
+      const maybeAddFirstCard = () => {
+        if (document.getElementById("first-save-card")) {
+          return;
+        }
+
+        const cardHtml = `
+          <article id="first-save-card" class="card card--standard fade-in-card" role="article" aria-labelledby="new-card-title">
+            <div class="card-image">
+              <div class="card-gradient" style="background: var(--gradient-sage);"></div>
+            </div>
+            <div class="card-body">
+              <h3 id="new-card-title" class="card-title">Freshly saved: Product Thinking in 2026</h3>
+              <p class="card-excerpt">A saved item drops in at the top while the rest of the grid flows down.</p>
+              <footer class="card-meta"><span class="card-source">new item</span><time class="card-date">just now</time></footer>
+            </div>
+          </article>
+        `;
+        dashboardGrid.insertAdjacentHTML("afterbegin", cardHtml);
+      };
+
+      const triggerSaveFlow = () => {
+        maybeAddFirstCard();
+        showToast("Saved to your vault.");
+        if (!localStorage.getItem("glean-first-save-v2")) {
+          fireConfetti();
+          localStorage.setItem("glean-first-save-v2", "true");
+          showToast("First save completed.");
+        }
+        if (!localStorage.getItem("glean-filter-tooltip-v2")) {
+          setTimeout(() => {
+            tooltip.classList.add("is-visible");
+          }, 1500);
+          localStorage.setItem("glean-filter-tooltip-v2", "true");
+        }
+      };
+
+      document.querySelectorAll(".trigger-save").forEach((el) => {
+        el.addEventListener("click", triggerSaveFlow);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          tooltip.classList.remove("is-visible");
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!tooltip.classList.contains("is-visible")) {
+          return;
+        }
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        if (!tooltip.contains(target) && !target.closest(".trigger-save")) {
+          tooltip.classList.remove("is-visible");
+        }
+      });
+
+      document.querySelectorAll("[data-animate-number]").forEach((node) => {
+        const targetValue = Number(node.getAttribute("data-animate-number")) || 0;
+        const duration = 700;
+        const start = performance.now();
+
+        const tick = (now) => {
+          const progress = Math.min((now - start) / duration, 1);
+          const value = Math.round(targetValue * progress);
+          node.textContent = String(value);
+          if (progress < 1) {
+            requestAnimationFrame(tick);
+          }
+        };
+        requestAnimationFrame(tick);
+      });
+
+      let fabClicks = Number(sessionStorage.getItem("glean-fab-clicks-v2") || "0");
+      fab.addEventListener("click", () => {
+        fabClicks += 1;
+        sessionStorage.setItem("glean-fab-clicks-v2", String(fabClicks));
+        if (fabClicks >= 10) {
+          fab.classList.add("is-secret");
+          console.info("Found it!");
+          setTimeout(() => {
+            fab.classList.remove("is-secret");
+          }, 1000);
+          fabClicks = 0;
+          sessionStorage.setItem("glean-fab-clicks-v2", "0");
+        }
+      });
+
+      updateHeader();
+      window.addEventListener("scroll", updateHeader, { passive: true });
+    })();
+  </script>
+</body>
+</html>

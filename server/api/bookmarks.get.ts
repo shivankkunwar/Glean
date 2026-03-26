@@ -75,9 +75,15 @@ export default defineEventHandler((event) => {
       .prepare(`SELECT COUNT(*) AS count FROM bookmarks b${filter}`)
       .get({ categoryId }) as { count: number }) ?? { count: 0 };
 
-  const tagRows = client
-    .prepare('SELECT id, bookmark_id, name, source, confidence FROM tags ORDER BY id DESC')
-    .all() as Array<{ id: number; bookmark_id: number; name: string; source: string; confidence: number }>;
+  // Scope tags to only the bookmarks we loaded — avoids a full table scan at scale
+  const loadedIds = rows.map((r) => r.id);
+  const tagRows = loadedIds.length
+    ? (client
+        .prepare(
+          `SELECT id, bookmark_id, name, source, confidence FROM tags WHERE bookmark_id IN (${loadedIds.map(() => '?').join(',')}) ORDER BY id DESC`
+        )
+        .all(...loadedIds) as Array<{ id: number; bookmark_id: number; name: string; source: string; confidence: number }>)
+    : [];
 
   const tagMap = new Map<number, Array<{ id: number; name: string; source: string; confidence: number }>>();
   for (const tag of tagRows) {

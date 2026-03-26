@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glean — Remember everything. Organize nothing.</title>
+  <meta name="description" content="Your personal knowledge vault. Save articles, notes, videos, books, and products in one beautiful place.">
+  <link rel="stylesheet" href="./glean-mockup-v3.css">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header" id="site-header">
+    <a href="#" class="header-logo">Glean</a>
+    <div class="header-right">
+      <button class="header-link" id="collections-btn" aria-haspopup="true" aria-expanded="false">Collections <i class="ph ph-caret-down" style="font-size:12px; margin-left:2px;"></i></button>
+      <div class="header-avatar" id="avatar-btn" title="AI Monitor & Profile">S</div>
+    </div>
+  </header>
+
+  <!-- COLLECTIONS POPOVER -->
+  <div class="collections-popover" id="collections-popover" role="menu">
+    <div class="collections-header">
+      <h4>Your Vault</h4>
+      <button class="collections-add" aria-label="New collection"><i class="ph ph-plus-circle"></i></button>
+    </div>
+    <div class="collection-item" role="menuitem">
+      <span class="collection-name"><i class="ph ph-tray"></i> Everything</span>
+      <span class="collection-count numeric">1,248</span>
+    </div>
+    <div class="collection-item" role="menuitem">
+      <span class="collection-name"><i class="ph ph-star"></i> Favorites</span>
+      <span class="collection-count numeric">42</span>
+    </div>
+    <div class="collections-header" style="margin-top:16px; border-bottom:none; padding-bottom:0;">
+      <h4 style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Smart Topics</h4>
+    </div>
+    <div class="collection-item" role="menuitem">
+      <span class="collection-name"><i class="ph ph-magic-wand"></i> reading lists</span>
+    </div>
+    <div class="collection-item" role="menuitem">
+      <span class="collection-name"><i class="ph ph-magic-wand"></i> design engineering</span>
+    </div>
+    <div class="collection-item" role="menuitem">
+      <span class="collection-name"><i class="ph ph-magic-wand"></i> cognitive science</span>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       HERO INPUT — primary action: save a link OR search
+       ===================================================================== -->
+
+  <div class="hero-input-section">
+    <div class="smart-input-wrap" id="smart-input-wrap">
+      <!-- single bar: paste URL → save, type text → search -->
+      <input
+        type="text"
+        class="smart-input"
+        id="smart-input"
+        placeholder="Paste a link to save it, or search your vault..."
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Save a link or search your vault"
+      >
+      <i class="ph ph-link smart-input-icon" id="smart-input-icon" aria-hidden="true"></i>
+      <div class="smart-input-right">
+        <span class="kbd-badge" id="kbd-badge">⌘K</span>
+        <button class="inline-save-btn" id="inline-save-btn" type="button" aria-label="Save">
+          <span id="save-btn-label">Save</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- URL preview bar: appears below when URL is detected -->
+    <div class="url-preview-bar" id="url-preview-bar" aria-live="polite">
+      <div class="url-preview-favicon" id="url-favicon" aria-hidden="true">
+        <i class="ph ph-globe" style="color: var(--text-muted); font-size: 10px;"></i>
+      </div>
+      <span class="url-preview-domain" id="url-domain"></span>
+      <span class="url-preview-path" id="url-path"></span>
+      <i class="ph ph-arrow-right" style="color: var(--text-muted); font-size: 12px; flex-shrink:0;" aria-hidden="true"></i>
+    </div>
+
+    <!-- Hint line -->
+    <p class="smart-input-hint" id="smart-input-hint">
+      Paste any link · Write a note · <kbd style="font: inherit; opacity:0.6;">⌘K</kbd> to focus
+    </p>
+
+    <!-- Quick-action chips: visible when bar is unfocused and empty -->
+    <div class="quick-actions" id="quick-actions">
+      <button class="quick-action-chip" id="chip-note">
+        <i class="ph ph-note-pencil" aria-hidden="true"></i> Quick note
+      </button>
+      <button class="quick-action-chip">
+        <i class="ph ph-youtube-logo" aria-hidden="true"></i> YouTube video
+      </button>
+      <button class="quick-action-chip">
+        <i class="ph ph-book-open" aria-hidden="true"></i> Add a book
+      </button>
+      <button class="quick-action-chip">
+        <i class="ph ph-shopping-bag" aria-hidden="true"></i> Product
+      </button>
+    </div>
+  </div>
+
+  <!-- FILTER PILLS -->
+  <nav class="filter-section" role="tablist" aria-label="Filter by content type">
+    <div class="filter-pills">
+      <button class="filter-pill active" role="tab" aria-selected="true"  data-filter="all">All</button>
+      <button class="filter-pill" role="tab" aria-selected="false" data-filter="article">Articles</button>
+      <button class="filter-pill" role="tab" aria-selected="false" data-filter="note">Notes</button>
+      <button class="filter-pill" role="tab" aria-selected="false" data-filter="video">Videos</button>
+      <button class="filter-pill" role="tab" aria-selected="false" data-filter="book">Books</button>
+      <button class="filter-pill" role="tab" aria-selected="false" data-filter="product">Products</button>
+    </div>
+  </nav>
+
+  <!-- SECTION HEADING (filtered view) -->
+  <div class="section-heading" id="section-heading" style="display:none">
+    <h2 id="section-title"></h2>
+  </div>
+
+  <!-- SEARCH RESULTS INFO -->
+  <div class="results-info" id="results-info">
+    Found <strong id="results-count">0</strong> results for "<span id="results-query"></span>"
+  </div>
+
+  <!-- EMPTY STATE -->
+  <section class="empty-state" id="empty-state">
+    <div class="empty-illustration">
+      <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="50" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.3"/>
+        <circle cx="60" cy="60" r="30" stroke="currentColor" stroke-width="1.5" opacity="0.2"/>
+        <circle cx="60" cy="60" r="4" fill="currentColor" opacity="0.4"/>
+        <path d="M60 30 V20 M60 90 V100 M30 60 H20 M90 60 H100" stroke="currentColor" stroke-width="1.5" opacity="0.2"/>
+      </svg>
+    </div>
+    <h1>Your vault is empty.</h1>
+    <p>Paste any link above or type a quick note — it saves instantly.</p>
+  </section>
+
+  <!-- MASONRY GRID -->
+  <div class="container">
+    <div class="masonry-grid" id="vault-grid">
+
+      <!-- ~~~~ ARTICLE CARDS ~~~~ -->
+      <article class="card" data-type="article" role="article">
+        <div class="card-image">
+          <div class="card-gradient" style="background: var(--gradient-ochre);"></div>
+          <div class="card-actions">
+            <button class="card-action" aria-label="Pin"><i class="ph ph-push-pin"></i></button>
+            <button class="card-action" aria-label="Delete"><i class="ph ph-trash"></i></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">The Art of Intentional Reading in a Hyperlinked World</h3>
+          <p class="card-excerpt">A practical framework for capturing ideas without collecting noise. Focus on retrieval, not hoarding.</p>
+          <div class="card-meta">
+            <span>nesslabs.com</span><span class="dot"></span><time class="numeric">4 days ago</time>
+          </div>
+          <div class="card-tags">
+            <span class="card-tag">reading</span>
+            <span class="card-tag">PKM</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" data-type="article" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80" alt="Coffee and notebook on warm desk" loading="lazy">
+          <div class="card-actions">
+            <button class="card-action" aria-label="Pin"><i class="ph ph-push-pin"></i></button>
+            <button class="card-action" aria-label="Delete"><i class="ph ph-trash"></i></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Notes on Deep Work by Cal Newport</h3>
+          <p class="card-excerpt">Attention is finite. Design your day for long stretches of uninterrupted thought.</p>
+          <div class="card-meta">
+            <span>calnewport.com</span><span class="dot"></span><time class="numeric">1 month ago</time>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" data-type="article" role="article">
+        <div class="card-image">
+          <div class="card-gradient" style="background: var(--gradient-sage);"></div>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Why Spatial Interfaces Feel More Natural</h3>
+          <p class="card-excerpt">Our brains evolved for spatial reasoning. Interfaces that respect this are easier to navigate.</p>
+          <div class="card-meta">
+            <span>darkblueheaven.com</span><span class="dot"></span><time class="numeric">2 weeks ago</time>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" data-type="article" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1558618666-fcd25c85f82e?auto=format&fit=crop&w=600&q=80" alt="Lines of code on a dark screen" loading="lazy">
+          <div class="card-actions">
+            <button class="card-action" aria-label="Pin"><i class="ph ph-push-pin"></i></button>
+            <button class="card-action" aria-label="Delete"><i class="ph ph-trash"></i></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Building a Personal API for Thought</h3>
+          <p class="card-excerpt">How structured note-taking feeds into retrieval systems that actually work.</p>
+          <div class="card-meta">
+            <span>julian.digital</span><span class="dot"></span><time class="numeric">5 days ago</time>
+          </div>
+        </div>
+      </article>
+
+      <!-- ~~~~ PROCESSING CARDS ~~~~ -->
+      <article class="card card--processing" data-type="article" role="article">
+        <div class="card-image">
+          <div class="card-gradient" style="background: var(--gradient-terracotta);"></div>
+        </div>
+        <div class="card-body">
+          <div class="processing-pill">
+            <span class="processing-dot"></span>
+            Processing
+          </div>
+          <h3 class="card-title">The Taste Gap: Why Your Early Work Disappoints You</h3>
+          <p class="processing-status" id="processing-status-1">Extracting article content…</p>
+          <div class="card-meta">
+            <span>ira-glass.com</span><span class="dot"></span><time class="numeric">just now</time>
+          </div>
+        </div>
+      </article>
+
+      <article class="card card--processing" data-type="video" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1593062096033-9a26b09da705?auto=format&fit=crop&w=600&q=80" alt="Hands on keyboard" loading="lazy">
+        </div>
+        <div class="card-body">
+          <div class="processing-pill">
+            <span class="processing-dot"></span>
+            Processing
+          </div>
+          <h3 class="card-title">youtube.com/watch?v=dQw4w9WgXcQ</h3>
+          <p class="processing-status" id="processing-status-2">Pulling video title and transcript…</p>
+          <div class="card-meta">
+            <span>youtube.com</span><span class="dot"></span><time class="numeric">a moment ago</time>
+          </div>
+        </div>
+      </article>
+
+      <!-- ~~~~ NOTE CARDS ~~~~ -->
+      <article class="card card--note" data-type="note" role="article">
+        <div class="card-body">
+          <i class="ph ph-text-aa note-icon" aria-hidden="true"></i>
+          <h3 class="card-title">Good knowledge systems reward retrieval speed, not collection volume. Keep inputs small and reusable. When latency exceeds 200ms, users abandon search for manual browsing.</h3>
+          <div class="card-meta">
+            <span>Quick thought</span><span class="dot"></span><time class="numeric">2 hours ago</time>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="card-action" aria-label="Delete"><i class="ph ph-trash"></i></button>
+        </div>
+      </article>
+
+      <article class="card card--note" data-type="note" role="article">
+        <div class="card-body">
+          <i class="ph ph-text-aa note-icon" aria-hidden="true"></i>
+          <h3 class="card-title">Three things I want to prototype this week: (1) semantic search over bookmarks, (2) auto-tagging via embeddings, (3) visual timeline view for saved items.</h3>
+          <div class="card-meta">
+            <span>Personal</span><span class="dot"></span><time class="numeric">Yesterday</time>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="card-action" aria-label="Delete"><i class="ph ph-trash"></i></button>
+        </div>
+      </article>
+
+      <article class="card card--note" data-type="note" role="article">
+        <div class="card-body">
+          <h3 class="card-title">Remember: the best interface is one you don't notice.</h3>
+          <div class="card-meta"><time class="numeric">4 days ago</time></div>
+        </div>
+      </article>
+
+      <!-- ~~~~ QUOTE CARDS ~~~~ -->
+      <article class="card card--quote" data-type="note" role="article">
+        <div class="card-body">
+          <span class="quote-mark" aria-hidden="true">"</span>
+          <h3 class="card-title">"The best memory tool is the one that gets out of your way before you notice it."</h3>
+          <div class="card-meta"><span>— Unknown</span></div>
+        </div>
+        <div class="card-actions">
+          <button class="card-action" aria-label="Pin"><i class="ph ph-push-pin"></i></button>
+        </div>
+      </article>
+
+      <article class="card card--quote" data-type="note" role="article">
+        <div class="card-body">
+          <span class="quote-mark" aria-hidden="true">"</span>
+          <h3 class="card-title">"Simplicity is about subtracting the obvious and adding the meaningful."</h3>
+          <div class="card-meta"><span>— John Maeda</span></div>
+        </div>
+      </article>
+
+      <!-- ~~~~ VIDEO CARDS ~~~~ -->
+      <article class="card card--video" data-type="video" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1616423640778-28d1b53229bd?auto=format&fit=crop&w=600&q=80" alt="Clean desk setup" loading="lazy">
+          <div class="play-btn" aria-hidden="true"><i class="ph-fill ph-play"></i></div>
+          <span class="duration-badge numeric">14:20</span>
+          <div class="card-actions">
+            <button class="card-action" aria-label="Pin"><i class="ph ph-push-pin"></i></button>
+            <button class="card-action" aria-label="Delete"><i class="ph ph-trash"></i></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Designing the Calm Product Stack</h3>
+          <p class="card-excerpt">How smaller teams ship faster by reducing dashboard clutter and ritualizing handoffs.</p>
+          <div class="card-meta"><span>youtube.com</span><span class="dot"></span><time class="numeric">1 week ago</time></div>
+        </div>
+      </article>
+
+      <article class="card card--video" data-type="video" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80" alt="Conference presentation" loading="lazy">
+          <div class="play-btn" aria-hidden="true"><i class="ph-fill ph-play"></i></div>
+          <span class="duration-badge numeric">42:15</span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">The Future of Personal Knowledge Management</h3>
+          <div class="card-meta"><span>vimeo.com</span><span class="dot"></span><time class="numeric">3 days ago</time></div>
+        </div>
+      </article>
+
+      <!-- ~~~~ BOOK CARDS ~~~~ -->
+      <article class="card card--book" data-type="book" role="article">
+        <div class="book-cover" style="background: var(--gradient-sand);">
+          <div class="book-3d">
+            <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=200&q=80" alt="Book cover" loading="lazy">
+            <div class="book-spine"></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Building a Second Brain</h3>
+          <div class="card-meta">
+            <span class="author">Tiago Forte</span><span class="dot"></span><span>Book</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card card--book" data-type="book" role="article">
+        <div class="book-cover" style="background: var(--gradient-slate);">
+          <div class="book-3d">
+            <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=200&q=80" alt="Book cover" loading="lazy">
+            <div class="book-spine"></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">How to Take Smart Notes</h3>
+          <div class="card-meta">
+            <span class="author">Sönke Ahrens</span><span class="dot"></span><span>Book</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ~~~~ PRODUCT CARDS ~~~~ -->
+      <article class="card card--product" data-type="product" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=600&q=80" alt="Keychron mechanical keyboard" loading="lazy">
+          <div class="card-actions">
+            <button class="card-action" aria-label="Pin"><i class="ph ph-push-pin"></i></button>
+            <button class="card-action" aria-label="Delete"><i class="ph ph-trash"></i></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <span class="product-category">Tech</span>
+          <div class="product-price numeric">$194.20</div>
+          <h3 class="card-title">Keychron K8 Pro Wireless Mechanical Keyboard</h3>
+          <div class="card-meta"><span>keychron.com</span><span class="dot"></span><time class="numeric">3 weeks ago</time></div>
+        </div>
+      </article>
+
+      <article class="card card--product" data-type="product" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80" alt="Headphones on yellow background" loading="lazy">
+        </div>
+        <div class="card-body">
+          <span class="product-category">Audio</span>
+          <div class="product-price numeric">$349.00</div>
+          <h3 class="card-title">Sony WH-1000XM5 Noise Cancelling</h3>
+          <div class="card-meta"><span>amazon.com</span><span class="dot"></span><time class="numeric">1 week ago</time></div>
+        </div>
+      </article>
+
+      <article class="card card--product" data-type="product" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80" alt="Wristwatch on white surface" loading="lazy">
+        </div>
+        <div class="card-body">
+          <span class="product-category">Accessories</span>
+          <div class="product-price numeric">$275.00</div>
+          <h3 class="card-title">Braun BN0032 Classic Watch</h3>
+          <div class="card-meta"><span>braun.com</span><span class="dot"></span><time class="numeric">2 months ago</time></div>
+        </div>
+      </article>
+
+      <!-- ~~~~ MORE ARTICLES ~~~~ -->
+      <article class="card" data-type="article" role="article">
+        <div class="card-image">
+          <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80" alt="Minimalist concrete architecture" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Concrete Residence by Tadao Ando</h3>
+          <p class="card-excerpt">Exploring the intersection of brutalism and warmth in residential architecture.</p>
+          <div class="card-meta"><span>archdaily.com</span><span class="dot"></span><time class="numeric">12 Oct</time></div>
+        </div>
+      </article>
+
+      <article class="card" data-type="article" role="article">
+        <div class="card-image">
+          <div class="card-gradient" style="background: var(--gradient-slate);"></div>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Designing for the Long Now</h3>
+          <p class="card-excerpt">How to build tools that age gracefully. Permanence in software is underrated.</p>
+          <div class="card-meta"><span>longnow.org</span><span class="dot"></span><time class="numeric">6 days ago</time></div>
+        </div>
+      </article>
+
+    </div><!-- /masonry-grid -->
+  </div><!-- /container -->
+
+  <!-- =====================================================================
+       AI MONITOR TRAY (Operator View)
+       ===================================================================== -->
+  <div class="ai-monitor-overlay" id="ai-monitor-overlay">
+    <div class="ai-monitor-tray" role="dialog" aria-modal="true" aria-label="AI Monitor">
+      <div class="monitor-header">
+        <h3><i class="ph ph-cpu"></i> AI Pipeline Health</h3>
+        <button class="monitor-close" id="close-monitor" aria-label="Close monitor"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="monitor-body">
+        <div class="monitor-metrics">
+          <div class="metric-card">
+            <div class="metric-val">12<span style="font-size:14px; color:var(--text-muted); font-weight:500;">ms</span></div>
+            <div class="metric-label"><span class="status-dot"></span>Latency</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val">99.9<span style="font-size:14px; color:var(--text-muted); font-weight:500;">%</span></div>
+            <div class="metric-label"><span class="status-dot" style="background:var(--color-url);"></span>Success</div>
+          </div>
+        </div>
+
+        <h4 class="monitor-section-title">Job Queue</h4>
+        
+        <div class="job-item">
+          <div class="job-icon spinner" style="background:var(--text-primary);"><i class="ph ph-spinner-gap"></i></div>
+          <div class="job-details">
+            <div class="job-title">Extracting content</div>
+            <div class="job-status">youtube.com/watch?v=dQw...</div>
+          </div>
+          <div class="job-time">Running</div>
+        </div>
+
+        <div class="job-item">
+          <div class="job-icon" style="background:oklch(65% 0.15 150);"><i class="ph ph-check"></i></div>
+          <div class="job-details">
+            <div class="job-title">Generating vector embeddings</div>
+            <div class="job-status">The Taste Gap by Ira Glass</div>
+          </div>
+          <div class="job-time">2m ago</div>
+        </div>
+
+        <div class="job-item">
+          <div class="job-icon" style="background:oklch(65% 0.15 150);"><i class="ph ph-check"></i></div>
+          <div class="job-details">
+            <div class="job-title">Classifying topic</div>
+            <div class="job-status">Building a Second Brain</div>
+          </div>
+          <div class="job-time">1h ago</div>
+        </div>
+
+        <div class="job-item">
+          <div class="job-icon" style="background:oklch(60% 0.15 30);"><i class="ph ph-warning"></i></div>
+          <div class="job-details">
+            <div class="job-title">Scraping failed (Paywall)</div>
+            <div class="job-status">nytimes.com/article...</div>
+          </div>
+          <div class="job-time">1d ago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       READING MODE OVERLAY
+       ===================================================================== -->
+  <div class="reading-mode-overlay" id="reading-mode-overlay" role="dialog" aria-modal="true" aria-label="Reading Mode">
+    <div class="reading-header">
+      <button class="reading-back-btn" id="close-reading-mode"><i class="ph ph-arrow-left"></i> Back to Vault</button>
+      <div class="reading-actions">
+        <button class="reading-action-btn" aria-label="Reprocess with AI" title="Reprocess with AI"><i class="ph ph-arrows-clockwise"></i></button>
+        <button class="reading-action-btn" aria-label="Listen" title="Listen"><i class="ph ph-headphones"></i></button>
+        <button class="reading-action-btn primary" aria-label="Pin" title="Pin"><i class="ph ph-push-pin"></i></button>
+      </div>
+    </div>
+    
+    <div class="reading-scroll-area">
+      <div class="reading-container">
+        <img src="https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1200&q=80" alt="Cover" class="reading-hero-image">
+        <span class="reading-domain">calnewport.com</span>
+        <h1 class="reading-title">Notes on Deep Work by Cal Newport</h1>
+        
+        <div class="reading-meta-bar">
+          <div class="reading-author">Read time: 6 min · Saved 1 month ago</div>
+          <div class="reading-tags">
+            <span class="reading-tag">productivity</span>
+            <span class="reading-tag">focus</span>
+            <span class="reading-tag">+ add tag</span>
+          </div>
+        </div>
+        
+        <div class="reading-body">
+          <p>Deep work is the ability to focus without distraction on a cognitively demanding task. It's a skill that allows you to quickly master complicated information and produce better results in less time. Deep work will make you better at what you do and provide the sense of true fulfillment that comes from craftsmanship.</p>
+          
+          <p>In short, deep work is like a super power in our increasingly competitive twenty-first century economy. And yet, most people have lost the ability to go deep—spending their days instead in a frantic blur of e-mail and social media, not even realizing there's a better way.</p>
+          
+          <h2>The shallow alternative</h2>
+          
+          <p>The alternative to deep work is shallow work: non-cognitively demanding, logistical-style tasks, often performed while distracted. These efforts tend not to create much new value in the world and are easy to replicate.</p>
+          
+          <blockquote>"If you don't produce, you won't thrive—no matter how skilled or talented you are."</blockquote>
+          
+          <p>To produce at your peak level you need to work for extended periods with full concentration on a single task free from distraction. Put another way, the type of work that optimizes your performance is deep work. If you're not comfortable going deep for extended periods of time, it'll be difficult to get your performance to the peak levels of quality and quantity increasingly necessary to thrive professionally.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAB — Quick Note only -->
+  <div class="fab-wrap" id="fab-wrap">
+    <span class="fab-tooltip">Quick note</span>
+    <button class="fab" id="main-fab" aria-label="Write a quick note">
+      <i class="ph ph-pencil-simple" id="fab-icon"></i>
+    </button>
+  </div>
+
+  <!-- QUICK NOTE TRAY -->
+  <div class="glass-overlay" id="save-tray-overlay">
+    <div class="tray-content" role="dialog" aria-modal="true" aria-label="Quick note">
+      <div class="tray-header">
+        <h3>Quick note</h3>
+        <button class="tray-dismiss" id="close-tray" aria-label="Close"><i class="ph ph-x"></i></button>
+      </div>
+      <textarea class="tray-input" id="save-input" placeholder="What's on your mind?" autocomplete="off" rows="3" style="resize:none; width:100%; font-size:var(--text-xl); padding: var(--space-4) 0; border: none; border-bottom: 2px solid var(--border-subtle); background: transparent; color: var(--text-primary); font-family: var(--font-ui); outline: none; transition: border-color var(--d-fast); line-height: 1.6;"></textarea>
+      <div class="tray-actions">
+        <button class="btn-primary" id="btn-save" type="button">Save note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // ─── Elements ───────────────────────────────────────────────
+    const header       = document.getElementById('site-header');
+    const smartWrap    = document.getElementById('smart-input-wrap');
+    const smartInput   = document.getElementById('smart-input');
+    const smartIcon    = document.getElementById('smart-input-icon');
+    const kbdBadge     = document.getElementById('kbd-badge');
+    const inlineSaveBtn= document.getElementById('inline-save-btn');
+    const saveBtnLabel = document.getElementById('save-btn-label');
+    const urlPreviewBar= document.getElementById('url-preview-bar');
+    const urlDomain    = document.getElementById('url-domain');
+    const urlPath      = document.getElementById('url-path');
+    const hintLine     = document.getElementById('smart-input-hint');
+    const quickActions = document.getElementById('quick-actions');
+
+    const filterPills  = document.querySelectorAll('.filter-pill');
+    const allCards     = () => document.querySelectorAll('.card');
+    const grid         = document.getElementById('vault-grid');
+    const emptyState   = document.getElementById('empty-state');
+    const sectionHeading = document.getElementById('section-heading');
+    const sectionTitle   = document.getElementById('section-title');
+    const resultsInfo    = document.getElementById('results-info');
+    const resultsCount   = document.getElementById('results-count');
+    const resultsQuery   = document.getElementById('results-query');
+
+    const fab          = document.getElementById('main-fab');
+    const fabIcon      = document.getElementById('fab-icon');
+    const trayOverlay  = document.getElementById('save-tray-overlay');
+    const closeTrayBtn = document.getElementById('close-tray');
+    const trayInput    = document.getElementById('save-input');
+    const btnSave      = document.getElementById('btn-save');
+    const toastContainer = document.getElementById('toast-container');
+    const chipNote     = document.getElementById('chip-note');
+
+    let currentMode  = 'idle'; // 'idle' | 'search' | 'url'
+    let fabClickCount = 0;
+
+    // ─── Sticky Header + Compact Search Bar ───────────────────────
+    const heroSection = document.querySelector('.hero-input-section');
+    const COMPACT_THRESHOLD = 120; // px — how far to scroll before compacting
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      header.classList.toggle('scrolled', y > 40);
+      heroSection.classList.toggle('compact', y > COMPACT_THRESHOLD);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    // Expand bar while the user types/focuses, regardless of scroll
+    smartInput.addEventListener('focus', () => {
+      heroSection.classList.add('is-focused');
+    });
+    smartInput.addEventListener('blur', () => {
+      // Small delay so URL preview bar doesn't close before click registers
+      setTimeout(() => {
+        heroSection.classList.remove('is-focused');
+      }, 200);
+    });
+
+
+    // ─── URL detection ────────────────────────────────────────────
+    const URL_REGEX = /^https?:\/\/.+\..+/i;
+    const isUrl = v => URL_REGEX.test(v.trim());
+
+    const parseUrl = (raw) => {
+      try {
+        const u = new URL(raw.trim().startsWith('http') ? raw.trim() : 'https://' + raw.trim());
+        return { domain: u.hostname.replace('www.', ''), path: u.pathname === '/' ? '' : u.pathname };
+      } catch { return null; }
+    };
+
+    const setMode = (mode) => {
+      if (mode === currentMode) return;
+      currentMode = mode;
+
+      if (mode === 'url') {
+        smartWrap.classList.add('is-url', 'has-value');
+        smartIcon.className = 'ph ph-link smart-input-icon';
+        saveBtnLabel.textContent = 'Save link';
+        hintLine.textContent = 'Press Enter or click Save link to add to your vault';
+        quickActions.style.opacity = '0';
+        quickActions.style.pointerEvents = 'none';
+      } else if (mode === 'search') {
+        smartWrap.classList.remove('is-url');
+        smartWrap.classList.add('has-value');
+        smartIcon.className = 'ph ph-magnifying-glass smart-input-icon';
+        saveBtnLabel.textContent = 'Save note';
+        hintLine.textContent = 'Searching your vault…';
+        urlPreviewBar.classList.remove('is-visible');
+        quickActions.style.opacity = '0';
+        quickActions.style.pointerEvents = 'none';
+      } else {
+        smartWrap.classList.remove('is-url', 'has-value');
+        smartIcon.className = 'ph ph-link smart-input-icon';
+        hintLine.innerHTML = 'Paste any link · Write a note · <kbd style="font:inherit;opacity:0.6;">⌘K</kbd> to focus';
+        urlPreviewBar.classList.remove('is-visible');
+        quickActions.style.opacity = '';
+        quickActions.style.pointerEvents = '';
+      }
+    };
+
+    smartInput.addEventListener('input', () => {
+      const val = smartInput.value;
+      if (!val) { setMode('idle'); updateFilter(activeFilter(), ''); return; }
+
+      if (isUrl(val)) {
+        setMode('url');
+        const parsed = parseUrl(val);
+        if (parsed) {
+          urlDomain.textContent = parsed.domain;
+          urlPath.textContent = parsed.path;
+          urlPreviewBar.classList.add('is-visible');
+          // Visually round the bottom of the search bar into the preview
+          smartInput.style.borderRadius = '18px 18px 0 0';
+        }
+        // While a URL is typed, don't filter the grid
+        updateFilter(activeFilter(), '');
+      } else {
+        setMode('search');
+        smartInput.style.borderRadius = '';
+        updateFilter(activeFilter(), val);
+      }
+    });
+
+    // Paste event: auto-detect URL immediately
+    smartInput.addEventListener('paste', (e) => {
+      const pasted = (e.clipboardData || window.clipboardData).getData('text');
+      if (isUrl(pasted)) {
+        // Let the browser handle the paste, then run our logic
+        setTimeout(() => smartInput.dispatchEvent(new Event('input')), 0);
+      }
+    });
+
+    // ─── Inline save ──────────────────────────────────────────────
+    const doSave = () => {
+      const val = smartInput.value.trim();
+      if (!val) return;
+
+      const isLink = isUrl(val);
+      triggerSaveAnimation();
+
+      const newCard = buildCard(val, isLink);
+      grid.prepend(newCard);
+      emptyState.classList.remove('is-visible');
+      grid.style.display = '';
+
+      smartInput.value = '';
+      smartInput.style.borderRadius = '';
+      setMode('idle');
+      updateFilter(activeFilter(), '');
+
+      showToast(isLink ? 'Link saved — enrichment in progress.' : 'Note saved to your vault.');
+    };
+
+    inlineSaveBtn.addEventListener('click', doSave);
+    smartInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && smartInput.value.trim()) {
+        e.preventDefault();
+        doSave();
+      }
+    });
+
+    const buildCard = (val, isLink) => {
+      const card = document.createElement('article');
+      card.setAttribute('role', 'article');
+
+      if (isLink) {
+        // Processing card for URLs
+        card.className = 'card card--processing';
+        card.setAttribute('data-type', 'article');
+        const parsed = parseUrl(val);
+        card.innerHTML = `
+          <div class="card-image">
+            <div class="card-gradient" style="background: var(--gradient-ochre); opacity:0.5;"></div>
+          </div>
+          <div class="card-body">
+            <div class="processing-pill"><span class="processing-dot"></span>Processing</div>
+            <h3 class="card-title">${parsed ? parsed.domain : val}</h3>
+            <p class="processing-status">Fetching page content and generating tags…</p>
+            <div class="card-meta"><span>${parsed ? parsed.domain : ''}</span><span class="dot"></span><time class="numeric">just now</time></div>
+          </div>`;
+      } else {
+        // Note card
+        card.className = 'card card--note';
+        card.setAttribute('data-type', 'note');
+        card.innerHTML = `
+          <div class="card-body">
+            <i class="ph ph-text-aa note-icon" aria-hidden="true"></i>
+            <h3 class="card-title">${val}</h3>
+            <div class="card-meta"><span>Note</span><span class="dot"></span><time class="numeric">just now</time></div>
+          </div>
+          <div class="card-actions">
+            <button class="card-action" aria-label="Delete"><i class="ph ph-trash"></i></button>
+          </div>`;
+      }
+
+      card.style.animation = 'card-enter 350ms cubic-bezier(0.175, 0.885, 0.32, 1.1) both';
+      return card;
+    };
+
+    const triggerSaveAnimation = () => {
+      // First save confetti
+      if (!localStorage.getItem('glean-first-save')) {
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.45 } });
+        }
+        localStorage.setItem('glean-first-save', 'true');
+      }
+      // Pulse the save button
+      inlineSaveBtn.style.transform = 'scale(0.92)';
+      setTimeout(() => { inlineSaveBtn.style.transform = ''; }, 150);
+    };
+
+    // ─── Filter logic ─────────────────────────────────────────────
+    const activeFilter = () => {
+      const active = document.querySelector('.filter-pill.active');
+      return active ? active.getAttribute('data-filter') : 'all';
+    };
+
+    const typeLabels = { all:'All Items', article:'Articles', note:'Notes', video:'Videos', book:'Books', product:'Products' };
+
+    const updateFilter = (filterVal, searchStr = '') => {
+      const cards = allCards();
+      let visible = 0;
+      const lowSearch = searchStr.toLowerCase();
+
+      cards.forEach((card, i) => {
+        const type = card.getAttribute('data-type');
+        const text = (card.querySelector('.card-title')?.textContent || '') + ' ' + (card.querySelector('.card-excerpt')?.textContent || '');
+        const textMatch = !searchStr || text.toLowerCase().includes(lowSearch);
+        const typeMatch = filterVal === 'all' || type === filterVal;
+
+        if (textMatch && typeMatch) {
+          card.style.display = '';
+          visible++;
+          card.style.animation = 'none';
+          void card.offsetWidth;
+          card.style.animation = `card-enter var(--d-base) var(--ease-out) both`;
+          card.style.animationDelay = `${Math.min(visible * 30, 240)}ms`;
+        } else { card.style.display = 'none'; }
+      });
+
+      // Section heading
+      if (filterVal !== 'all' && !searchStr) {
+        sectionHeading.style.display = 'block';
+        sectionTitle.textContent = `${visible} ${typeLabels[filterVal] || filterVal}`;
+        sectionHeading.style.animation = 'none';
+        void sectionHeading.offsetWidth;
+        sectionHeading.style.animation = 'heading-enter var(--d-base) var(--ease-out) both';
+      } else { sectionHeading.style.display = 'none'; }
+
+      // Search results
+      if (searchStr) {
+        resultsInfo.classList.add('is-visible');
+        resultsCount.textContent = visible;
+        resultsQuery.textContent = searchStr;
+      } else { resultsInfo.classList.remove('is-visible'); }
+
+      // Empty state
+      emptyState.classList.toggle('is-visible', visible === 0);
+      grid.style.display = visible === 0 ? 'none' : '';
+    };
+
+    filterPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        filterPills.forEach(p => { p.classList.remove('active'); p.setAttribute('aria-selected', 'false'); });
+        pill.classList.add('active'); pill.setAttribute('aria-selected', 'true');
+        updateFilter(pill.getAttribute('data-filter'), currentMode === 'search' ? smartInput.value : '');
+      });
+    });
+
+    // ─── FAB — Quick Note ─────────────────────────────────────────
+    const openTray = () => {
+      trayOverlay.style.display = 'flex';
+      void trayOverlay.offsetWidth;
+      trayOverlay.classList.add('is-active');
+      setTimeout(() => trayInput.focus(), 50);
+    };
+    const closeTray = () => {
+      trayOverlay.classList.remove('is-active');
+      setTimeout(() => { trayOverlay.style.display = 'none'; }, 350);
+    };
+
+    fab.addEventListener('click', () => {
+      openTray();
+      fabClickCount++;
+      if (fabClickCount === 10) {
+        fabIcon.className = '';
+        fabIcon.textContent = '🎯';
+        setTimeout(() => { fabIcon.textContent = ''; fabIcon.className = 'ph ph-pencil-simple'; }, 1000);
+        fabClickCount = 0;
+      }
+    });
+
+    if (chipNote) chipNote.addEventListener('click', openTray);
+    closeTrayBtn.addEventListener('click', closeTray);
+    trayOverlay.addEventListener('click', e => { if (e.target === trayOverlay) closeTray(); });
+
+    btnSave.addEventListener('click', () => {
+      const val = trayInput.value.trim();
+      if (!val) { trayInput.focus(); return; }
+      const card = buildCard(val, false);
+      grid.prepend(card);
+      emptyState.classList.remove('is-visible');
+      grid.style.display = '';
+      trayInput.value = '';
+      closeTray();
+      showToast('Note saved.');
+    });
+
+    trayInput.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { btnSave.click(); }
+    });
+
+    // ─── Card Delete ──────────────────────────────────────────────
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('.card-action[aria-label="Delete"]');
+      if (!btn) return;
+      e.stopPropagation();
+      const card = btn.closest('.card');
+      if (card) { card.classList.add('deleting'); setTimeout(() => card.remove(), 200); }
+    });
+
+    // ─── Keyboard shortcuts ───────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        smartInput.focus();
+        smartInput.select();
+      }
+      if (e.key === 'Escape') {
+        if (trayOverlay.classList.contains('is-active')) closeTray();
+        else if (document.activeElement === smartInput) smartInput.blur();
+      }
+    });
+
+    // ─── Processing status cycling ────────────────────────────────
+    const processingSteps = [
+      'Fetching page content…',
+      'Extracting article text…',
+      'Classifying content type…',
+      'Generating tags…',
+      'Building search index…',
+      'Done!',
+    ];
+    let pStep = 0;
+    const p1 = document.getElementById('processing-status-1');
+    const p2 = document.getElementById('processing-status-2');
+    if (p1 && p2) {
+      setInterval(() => {
+        pStep = (pStep + 1) % (processingSteps.length - 1);
+        p1.textContent = processingSteps[pStep];
+        p2.textContent = processingSteps[(pStep + 2) % (processingSteps.length - 1)];
+      }, 2400);
+    }
+
+    // ─── Toasts ───────────────────────────────────────────────────
+    const showToast = (msg) => {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<i class="ph-fill ph-check-circle" style="color: oklch(55% 0.12 150);"></i> ${msg}`;
+      toastContainer.appendChild(t);
+      setTimeout(() => { t.classList.add('exit'); setTimeout(() => t.remove(), 200); }, 3000);
+    };
+
+    // ─── Collections Popover ──────────────────────────────────────
+    const collectionsBtn = document.getElementById('collections-btn');
+    const collectionsPopover = document.getElementById('collections-popover');
+    
+    if (collectionsBtn && collectionsPopover) {
+      collectionsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = collectionsPopover.classList.contains('is-open');
+        collectionsPopover.classList.toggle('is-open');
+        collectionsBtn.setAttribute('aria-expanded', !isOpen);
+      });
+      document.addEventListener('click', (e) => {
+        if (!collectionsPopover.contains(e.target) && e.target !== collectionsBtn) {
+          collectionsPopover.classList.remove('is-open');
+          collectionsBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    // ─── AI Monitor ───────────────────────────────────────────────
+    const avatarBtn = document.getElementById('avatar-btn');
+    const aiMonitorOverlay = document.getElementById('ai-monitor-overlay');
+    const closeMonitorBtn = document.getElementById('close-monitor');
+
+    if (avatarBtn && aiMonitorOverlay) {
+      avatarBtn.addEventListener('click', () => {
+        aiMonitorOverlay.classList.add('is-active');
+      });
+      closeMonitorBtn.addEventListener('click', () => {
+        aiMonitorOverlay.classList.remove('is-active');
+      });
+      aiMonitorOverlay.addEventListener('click', (e) => {
+        if (e.target === aiMonitorOverlay) aiMonitorOverlay.classList.remove('is-active');
+      });
+    }
+
+    // ─── Reading Mode ─────────────────────────────────────────────
+    const readingModeOverlay = document.getElementById('reading-mode-overlay');
+    const closeReadingMode = document.getElementById('close-reading-mode');
+
+    // Attach click to any article card (that isn't being deleted/pinned)
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest('.card[data-type="article"]');
+      const actionBtn = e.target.closest('.card-action');
+      
+      if (card && !actionBtn && readingModeOverlay) {
+        // Open reading mode
+        readingModeOverlay.classList.add('is-active');
+        document.body.style.overflow = 'hidden'; // Stop background scrolling
+      }
+    });
+
+    if (closeReadingMode && readingModeOverlay) {
+      closeReadingMode.addEventListener('click', () => {
+        readingModeOverlay.classList.remove('is-active');
+        document.body.style.overflow = '';
+      });
+    }
+  });
+  </script>
+</body>
+</html>
