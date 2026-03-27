@@ -78,21 +78,8 @@
       <slot />
     </main>
 
-    <!-- PWA INSTALL BANNER -->
-    <div v-if="showInstallBanner" class="pwa-install-banner" role="banner">
-      <div class="pwa-install-content">
-        <i class="ph ph-download-simple pwa-install-icon" />
-        <span class="pwa-install-text">Add Glean to your home screen for quick access</span>
-      </div>
-      <div class="pwa-install-actions">
-        <button class="pwa-install-btn pwa-install-btn--secondary" @click="dismissBanner">
-          Not now
-        </button>
-        <button class="pwa-install-btn pwa-install-btn--primary" @click="installPWA">
-          Add to home screen
-        </button>
-      </div>
-    </div>
+    <!-- PWA INSTALL - Minimal iOS Style -->
+    <PWAInstallMinimal />
 
     <!-- TOAST CONTAINER (global) -->
     <div class="toast-container" id="toast-container" aria-live="polite" />
