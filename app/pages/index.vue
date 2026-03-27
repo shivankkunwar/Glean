@@ -19,10 +19,11 @@
         <div class="smart-input-right">
           <span class="kbd-badge">⌘K</span>
           <button
+            v-if="inputVal.length > 0"
             class="inline-save-btn"
             type="button"
             @click.prevent="doSave"
-            :disabled="!isAuthenticated || !inputVal"
+            :disabled="!isAuthenticated"
           >
             {{ inputMode === 'url' ? 'Save link' : inputMode === 'search' ? 'Search' : 'Save' }}
           </button>
