@@ -119,9 +119,10 @@
           :class="cardClasses(card)"
           :data-type="cardType(card)"
           :style="{ animationDelay: `${Math.min(index * 30, 240)}ms` }"
-          @click.stop="openReading(card)"
+          @click.stop="navigateTo('/bookmarks/' + card.id)"
         >
           <!-- IMAGE / GRADIENT header for link cards -->
+
           <template v-if="cardType(card) !== 'note'">
             <div class="card-image" v-if="cardType(card) !== 'book'">
               <img v-if="card.ogImage" :src="card.ogImage" :alt="card.title || ''" loading="lazy" />
@@ -238,59 +239,8 @@
       </div>
     </div>
 
-    <!-- READING MODE OVERLAY -->
-    <div class="reading-mode-overlay" :class="{ 'is-active': readingCard }" role="dialog" aria-modal="true">
-      <div class="reading-header">
-        <button class="reading-back-btn" @click="readingCard = null">
-          <i class="ph ph-arrow-left" /> Back to Vault
-        </button>
-        <div class="reading-actions">
-          <a v-if="readingCard" :href="readingCard.url" target="_blank" rel="noreferrer" class="reading-action-btn" title="Open original">
-            <i class="ph ph-arrow-square-out" />
-          </a>
-          <NuxtLink v-if="readingCard" :to="`/bookmarks/${readingCard.id}`" class="reading-action-btn" title="Full detail page" @click="readingCard = null">
-            <i class="ph ph-scroll" />
-          </NuxtLink>
-          <button
-            v-if="isAuthenticated && readingCard"
-            class="reading-action-btn"
-            :class="{ 'is-active-action': readingCard.isPinned }"
-            @click="togglePin(readingCard)"
-            :title="readingCard?.isPinned ? 'Unpin' : 'Pin'"
-          >
-            <i :class="['ph', readingCard?.isPinned ? 'ph-fill ph-push-pin' : 'ph-push-pin']" />
-          </button>
-          <button
-            v-if="isAuthenticated && readingCard"
-            class="reading-action-btn"
-            @click="reprocessCard(readingCard)"
-            :disabled="reprocessing"
-            title="Reprocess with AI"
-          >
-            <i class="ph ph-arrows-clockwise" :class="{ spin: reprocessing }" />
-          </button>
-          <button v-if="isAuthenticated && readingCard" class="reading-action-btn danger" @click="remove(readingCard.id); readingCard = null" title="Delete">
-            <i class="ph ph-trash" />
-          </button>
-        </div>
-      </div>
-      <div class="reading-scroll-area" v-if="readingCard">
-        <div class="reading-container">
-          <img v-if="readingCard.ogImage" :src="readingCard.ogImage" :alt="readingCard.title || ''" class="reading-hero-image" />
-          <span class="reading-domain">{{ cardDomain(readingCard) }}</span>
-          <h1 class="reading-title">{{ readingCard.title || 'Untitled' }}</h1>
-          <div class="reading-meta-bar">
-            <div class="reading-author">Saved {{ relativeTime(readingCard.savedAt) }}</div>
-            <div class="reading-tags">
-              <span v-for="tag in readingCard.tags?.slice(0,4)" :key="tag.id" class="reading-tag">{{ tag.name }}</span>
-            </div>
-          </div>
-          <div class="reading-body">
-            <p>{{ readingCard.summary || readingCard.description || 'No description extracted yet.' }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- TOAST CONTAINER (global) -->
+    <div class="toast-container" id="toast-container" aria-live="polite" />
   </div>
 </template>
 
@@ -1136,6 +1086,10 @@ onBeforeUnmount(() => {
   /* FAB */
   .fab-wrap { bottom: 20px; right: 16px; }
   .fab { width: 46px; height: 46px; font-size: 20px; }
+
+  /* Note icon - position in corner with spacing */
+  .note-icon { top: 8px; right: 8px; }
+  .card--note .note-body { padding-top: 36px; }
 }
 
 @media (max-width: 400px) {
