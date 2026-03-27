@@ -84,7 +84,8 @@ export function ingestUrl(payload: ReturnType<typeof normalizeIngestPayload>) {
     };
   }
 
-  const domain = new URL(normalized).hostname;
+  let domain = '';
+  try { domain = new URL(normalized).hostname; } catch { /* ignore bad URLs */ }
   const sourceType = detectSourceType(normalized);
   const result = client
     .prepare(

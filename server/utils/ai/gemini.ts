@@ -85,13 +85,27 @@ export function createGeminiProvider(): AIProvider {
 
       const vectors: number[][] = [];
 
-      for (const rawText of texts) {
-        const text = rawText.trim();
-        if (!text) {
-          vectors.push([]);
-          continue;
+      try {
+        for (const rawText of texts) {
+          const text = rawText.trim();
+          if (!text) {
+            vectors.push([]);
+            continue;
+          }
+          vectors.push(await embedOne(text));
         }
-        vectors.push(await embedOne(text));
+      } catch (err: any) {
+        if (err.message?.includes('User location is not supported') || err.message?.includes('400')) {
+          return {
+            vectors: [],
+            provider: 'gemini',
+            model,
+            version: 'v1',
+            skipped: true,
+            reason: 'Gemini API not available in this region or rejected request'
+          };
+        }
+        throw err;
       }
 
       return {

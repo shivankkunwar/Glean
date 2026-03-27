@@ -73,14 +73,15 @@ function markFailed(jobId: number, err: unknown, attempt: number) {
   if (attempt >= 3) {
     client
       .prepare(
-        'UPDATE jobs SET status = "failed", error = @error, attempts = @attempts, locked_at = NULL WHERE id = @id'
+        "UPDATE jobs SET status = 'failed', error = @error, attempts = @attempts, locked_at = NULL WHERE id = @id"
       )
       .run({ id: jobId, error: message, attempts: attempt });
     return;
   }
 
   // Exponential backoff with jitter
-  const baseDelay = RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)];
+  const backoffIndex = Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1);
+  const baseDelay = RETRY_BACKOFF_MS[backoffIndex] ?? 5000;
   const jitterMs = Math.floor(Math.random() * 2000) - 1000; // ±1 second jitter
   const delayMs = Math.max(1000, baseDelay + jitterMs);
 
@@ -102,11 +103,22 @@ function markFailed(jobId: number, err: unknown, attempt: number) {
     });
 }
 
-function markDone(jobId: number) {
+function markDone(jobId: number, bookmarkId: number) {
   const { client } = getDb();
   client
     .prepare("UPDATE jobs SET status='done', error=NULL, locked_at=NULL WHERE id = ?")
     .run(jobId);
+
+  // If this was the last active AI job, close out the bookmark ai_status
+  const remaining = client
+    .prepare("SELECT COUNT(*) as count FROM jobs WHERE bookmark_id = ? AND status IN ('pending', 'processing') AND type != 'fetch'")
+    .get(bookmarkId) as { count: number };
+    
+  if (remaining.count === 0) {
+    client
+      .prepare(`UPDATE bookmarks SET ai_status = 'done' WHERE id = ? AND ai_status NOT IN ('failed')`)
+      .run(bookmarkId);
+  }
 }
 
 function claimJob(jobId: number): boolean {
@@ -151,7 +163,8 @@ async function processFetchJob(job: JobRow) {
     .run({
       title: metadata.title,
       description: metadata.description,
-      content: metadata.content,
+      // Truncate large content to stay within AI token windows
+      content: metadata.content ? metadata.content.slice(0, 4000) : null,
       ogImage: metadata.ogImage,
       favicon: metadata.favicon,
       domain: metadata.domain,
@@ -172,8 +185,10 @@ async function processFetchJob(job: JobRow) {
   }
 
   enqueueJob('normalize', job.bookmark_id);
-  enqueueJob('classify', job.bookmark_id);
-  enqueueJob('summarize', job.bookmark_id);
+  if (metadata.domain !== 'note.local' && metadata.domain !== 'note') {
+    enqueueJob('classify', job.bookmark_id);
+    enqueueJob('summarize', job.bookmark_id);
+  }
   enqueueJob('embed', job.bookmark_id);
   enqueueJob('reindex', job.bookmark_id);
 }
@@ -395,10 +410,10 @@ async function processEmbedJob(job: JobRow) {
   });
 
   // Save the embedding vector if not skipped
-  if (!result.skipped && result.vectors.length > 0 && result.vectors[0].length > 0) {
+  if (!result.skipped && result.vectors.length > 0 && result.vectors[0]) {
     await saveEmbedding(
       job.bookmark_id,
-      result.vectors[0],
+      result.vectors[0] as number[],
       result.model,
       result.version ?? 'v1'
     );
@@ -427,6 +442,10 @@ async function processReindexJob(job: JobRow) {
     .prepare(
       `UPDATE bookmarks
        SET artifact_policy_version = 'v1',
+           ai_status = CASE
+             WHEN ai_status NOT IN ('done', 'failed') THEN 'done'
+             ELSE ai_status
+           END,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`
     )
@@ -462,14 +481,14 @@ async function processJob(job: JobRow) {
       default:
         throw new Error(`Unknown job type: ${job.type}`);
     }
-    markDone(job.id);
+    markDone(job.id, job.bookmark_id);
   } catch (error) {
     try {
       markFailed(job.id, error, job.attempts + 1);
     } catch (markError) {
       client
         .prepare(
-          'UPDATE jobs SET status = "failed", error = @error, attempts = @attempts, locked_at = NULL WHERE id = @id'
+          "UPDATE jobs SET status = 'failed', error = @error, attempts = @attempts, locked_at = NULL WHERE id = @id"
         )
         .run({
           id: job.id,
@@ -478,14 +497,17 @@ async function processJob(job: JobRow) {
         });
     }
 
-    if (job.type === 'fetch') {
-      client
-        .prepare('UPDATE bookmarks SET status = "failed", failure_reason = @reason WHERE id = @bookmarkId')
-        .run({ reason: error instanceof Error ? error.message : 'unknown', bookmarkId: job.bookmark_id });
-    } else {
-      client
-        .prepare('UPDATE bookmarks SET ai_status = "failed", failure_reason = @reason WHERE id = @bookmarkId')
-        .run({ reason: error instanceof Error ? error.message : 'unknown', bookmarkId: job.bookmark_id });
+    // Only mark the bookmark as failed if all retry attempts are exhausted
+    if (job.attempts + 1 >= 3) {
+      if (job.type === 'fetch') {
+        client
+          .prepare("UPDATE bookmarks SET status = 'failed', failure_reason = @reason WHERE id = @bookmarkId")
+          .run({ reason: error instanceof Error ? error.message : 'unknown', bookmarkId: job.bookmark_id });
+      } else {
+        client
+          .prepare("UPDATE bookmarks SET ai_status = 'failed', failure_reason = @reason WHERE id = @bookmarkId")
+          .run({ reason: error instanceof Error ? error.message : 'unknown', bookmarkId: job.bookmark_id });
+      }
     }
   }
 }
@@ -526,6 +548,8 @@ async function pollAndProcess() {
     queue.add(async () => {
       try {
         await processJob(row);
+      } catch (err) {
+        console.error('CRITICAL: unhandled error in queue processJob:', err);
       } finally {
         scheduledJobs.delete(row.id);
       }

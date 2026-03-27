@@ -1,6 +1,8 @@
 import { Readability } from '@mozilla/readability';
 import { DOMParser } from 'linkedom';
 import { load } from 'cheerio';
+// @ts-ignore
+import { YoutubeTranscript } from 'youtube-transcript/dist/youtube-transcript.esm.js';
 
 export type BookmarkSourceType = 'youtube' | 'twitter' | 'github' | 'article' | 'generic';
 
@@ -554,6 +556,19 @@ function fallbackMeta($: ReturnType<typeof load>, fallbackUrl: string, parts: Re
 }
 
 export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata> {
+  // Legacy fast-path for old note format
+  if (url.startsWith('note:')) {
+    return {
+      title: 'Note',
+      description: null,
+      content: null,
+      ogImage: null,
+      favicon: null,
+      domain: 'note',
+      sourceType: 'generic'
+    };
+  }
+
   const parsed = parseUrlParts(url);
   const sourceType: BookmarkSourceType = parsed.isYouTube
     ? 'youtube'
@@ -565,17 +580,42 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
 
   if (parsed.isYouTube && parsed.isYoutubeWatch) {
     const payload = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+    
+    // Attempt to fetch transcript
+    let transcriptText: string | null = null;
+    try {
+      const transcript = await YoutubeTranscript.fetchTranscript(url);
+      if (transcript && transcript.length > 0) {
+        transcriptText = transcript.map((t: {text: string}) => t.text).join(' ').slice(0, 20000);
+      }
+    } catch {
+      // Transcript might be disabled or unavailable
+    }
+
     if (payload) {
       return {
         title: safeText(payload.title),
         description: safeText(payload.author_name),
-        content: safeText(payload.title),
+        content: transcriptText || safeText(payload.title),
         ogImage: safeText(payload.thumbnail_url),
         favicon: 'https://www.youtube.com/favicon.ico',
         domain: parsed.hostname,
         sourceType
       };
     }
+  }
+
+  // Fast-path bypass for synthetic note URLs to prevent network fetch timeouts
+  if (parsed.hostname === 'note.local') {
+    return {
+      title: 'Note',
+      description: null, // Let ingest retain the existing description
+      content: null,
+      ogImage: null,
+      favicon: null,
+      domain: 'note.local',
+      sourceType: 'generic'
+    };
   }
 
   if (parsed.isTwitter) {

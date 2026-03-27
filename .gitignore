@@ -22,3 +22,10 @@ logs
 .env
 .env.*
 !.env.example
+
+
+/skills
+
+/.agents
+
+/thoughts

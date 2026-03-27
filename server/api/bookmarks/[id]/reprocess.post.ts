@@ -18,23 +18,30 @@ export default defineEventHandler((event) => {
     return { statusCode: 404, message: 'Bookmark not found' };
   }
 
+  // Check if this is a note (has note.local URL)
+  const isNote = bookmark.url.startsWith('https://note.local/');
+
   // Reset bookmark to re-fetch and re-process
+  // For notes, preserve the description field to keep the note text
   client
     .prepare(
       `UPDATE bookmarks 
        SET status = 'pending',
            ai_status = 'pending',
            source_metadata = NULL,
+           description = CASE WHEN ? THEN description ELSE NULL END,
            updated_at = CURRENT_TIMESTAMP 
        WHERE id = ?`
     )
-    .run(id);
+    .run(isNote ? 1 : 0, id);
 
   // Remove old tags (they'll be re-generated)
   client.prepare('DELETE FROM tags WHERE bookmark_id = ?').run(id);
 
-  // Re-enqueue all jobs
-  enqueueJob('fetch', id, { url: bookmark.url });
+  // Re-enqueue jobs (skip fetch for notes to preserve text)
+  if (!isNote) {
+    enqueueJob('fetch', id, { url: bookmark.url });
+  }
   enqueueJob('normalize', id);
   enqueueJob('classify', id);
   enqueueJob('summarize', id);
@@ -43,6 +50,6 @@ export default defineEventHandler((event) => {
   return {
     id,
     status: 'queued',
-    message: 'Bookmark queued for full re-processing (fetch + AI)'
+    message: 'Bookmark queued for re-processing' + (isNote ? ' (preserving note text)' : ' (fetch + AI)')
   };
 });

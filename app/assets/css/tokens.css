@@ -1,25 +1,105 @@
+/* ==========================================================================
+   GLEAN V6 — DESIGN TOKENS
+   Philosophy: OKLCH throughout, semantic token layer, character-first harmony.
+   Dominant (60%): warm parchment ground + ink text
+   Secondary (30%): clean white-surface cards
+   Accent (10%): deep pine/teal — one sharp, opinionated hue
+   ========================================================================== */
+
 :root {
-  --bg: #f6f7fb;
-  --surface: #ffffff;
-  --surface-soft: #f9f4ff;
-  --line: #e8eaf2;
-  --text: #3c3f56;
-  --text-muted: #6f7690;
+  /* ── Spacing ──────────────────────────────────────────────────────── */
+  --space-1:   4px; --space-2:   8px; --space-3:  12px; --space-4:  16px;
+  --space-5:  24px; --space-6:  32px; --space-8:  48px; --space-10: 64px;
+
+  /* ── Reference palette (concrete colors, named by hue character) ──── */
+  --ref-ink:          oklch(13% 0.016 58);    /* warm near-black — primary ink */
+  --ref-pine:         oklch(38% 0.105 189);   /* deep teal/pine — THE accent */
+  --ref-pine-bright:  oklch(52% 0.130 188);   /* lighter pine for UI chrome */
+  --ref-amber:        oklch(74% 0.170 80);    /* warm amber — card gradients */
+  --ref-amber-dark:   oklch(62% 0.140 72);    /* deeper amber */
+  --ref-sage:         oklch(66% 0.090 152);   /* muted sage green */
+  --ref-sage-dark:    oklch(55% 0.110 157);   /* deeper sage */
+  --ref-terracotta:   oklch(62% 0.138 34);    /* warm terracotta */
+  --ref-terracotta-dark: oklch(54% 0.115 28); /* deeper terracotta */
+  --ref-slate:        oklch(50% 0.075 232);   /* cool slate */
+  --ref-slate-dark:   oklch(42% 0.090 225);   /* deeper slate */
+  --ref-sand:         oklch(83% 0.075 76);    /* pale sand */
+  --ref-sand-dark:    oklch(76% 0.095 71);    /* golden sand */
+  --ref-parchment:    oklch(95.5% 0.022 72);  /* warm paper background */
+  --ref-cream:        oklch(99.2% 0.007 78);  /* near-white card surface */
+  --ref-cloud:        oklch(93.5% 0.024 68);  /* slightly deeper background */
+
+  /* ── Semantic background tokens ──────────────────────────────────── */
+  --bg-ground:    var(--ref-parchment);
+  --bg-surface:   var(--ref-cream);
+  --bg-raised:    var(--ref-cloud);
+  --bg-inverted:  var(--ref-ink);
+
+  /* ── Semantic text tokens ─────────────────────────────────────────── */
+  --text-primary:   var(--ref-ink);
+  --text-secondary: oklch(40% 0.018 58);
+  --text-tertiary:  oklch(56% 0.014 62);
+  --text-muted:     oklch(66% 0.011 66);
+  --text-inverse:   oklch(98.5% 0 0);
+
+  /* ── Semantic accent tokens ───────────────────────────────────────── */
+  --color-accent:   var(--ref-pine);
+  --color-accent-bg: oklch(38% 0.105 189 / 0.10);
+  --color-success:  oklch(52% 0.136 151);
+  --color-success-bg: oklch(52% 0.136 151 / 0.10);
+  --color-warn:     oklch(58% 0.145 38);
+  --color-warn-bg:  oklch(58% 0.145 38 / 0.10);
+  --color-process:  oklch(62% 0.130 75);
+  --color-process-bg: oklch(62% 0.130 75 / 0.12);
+  --color-process-text: oklch(46% 0.110 68);
+
+  /* ── Semantic border tokens ───────────────────────────────────────── */
+  --border-subtle:  oklch(88% 0.018 70);
+  --border-default: oklch(83% 0.022 68);
+
+  /* ── Semantic input token ─────────────────────────────────────────── */
+  --input-bg:  oklch(98% 0.008 76);
+
+  /* ── Gradients ────────────────────────────────────────────────────── */
+  --gradient-amber:      linear-gradient(135deg, var(--ref-amber), var(--ref-amber-dark));
+  --gradient-sage:       linear-gradient(135deg, var(--ref-sage), var(--ref-sage-dark));
+  --gradient-terracotta: linear-gradient(135deg, var(--ref-terracotta), var(--ref-terracotta-dark));
+  --gradient-slate:      linear-gradient(135deg, var(--ref-slate), var(--ref-slate-dark));
+  --gradient-sand:       linear-gradient(135deg, var(--ref-sand), var(--ref-sand-dark));
+  --gradient-pine:       linear-gradient(135deg, var(--ref-pine-bright), var(--ref-pine));
+
+  /* ── Typography ───────────────────────────────────────────────────── */
+  --font-ui: 'Satoshi', system-ui, sans-serif;
+  --text-xs:  0.6875rem; --text-sm:   0.8125rem; --text-base: 1rem;
+  --text-lg:  1.125rem;  --text-xl:   1.25rem;   --text-2xl:  1.5rem;
+  --text-3xl: 2rem;      --text-4xl:  2.5rem;
+
+  /* ── Easing ───────────────────────────────────────────────────────── */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-quart:  cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --d-instant: 100ms; --d-fast: 180ms; --d-base: 250ms;
+  --d-slow: 350ms; --d-entrance: 400ms;
+
+  /* ── Shadows — warm-toned ─────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px oklch(13% 0.016 58 / 0.05);
+  --shadow-sm: 0 2px 6px oklch(13% 0.016 58 / 0.07), 0 1px 2px oklch(13% 0.016 58 / 0.04);
+  --shadow-md: 0 4px 14px oklch(13% 0.016 58 / 0.09), 0 2px 4px oklch(13% 0.016 58 / 0.05);
+  --shadow-lg: 0 12px 30px oklch(13% 0.016 58 / 0.12), 0 4px 8px oklch(13% 0.016 58 / 0.06);
+  --shadow-xl: 0 20px 44px oklch(13% 0.016 58 / 0.16), 0 8px 16px oklch(13% 0.016 58 / 0.08);
+  --shadow-accent: 0 4px 18px oklch(38% 0.105 189 / 0.20);
+
+  --z-sticky: 20; --z-modal: 40; --z-toast: 50;
+
+  /* Legacy compat */
+  --font-main: var(--font-ui);
+  --surface: var(--bg-surface);
+  --line: var(--border-subtle);
+  --text: var(--text-primary);
+  --text-muted-compat: var(--text-muted);
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-sm: 8px;
-  --shadow: 0 18px 30px rgb(80 96 152 / 10%);
-  --grad-1: linear-gradient(135deg, #e8ecff, #f9f4ff);
-  --accent-rose: #ffd1da;
-  --accent-blue: #dceaff;
-  --accent-lime: #d8fae8;
-  --accent-violet: #eee5ff;
-  --font-main: 'Manrope', 'Inter', 'Segoe UI', system-ui, sans-serif;
-}
-
-.app-shell {
-  min-height: 100vh;
-  background: var(--grad-1);
-  color: var(--text);
-  font-family: var(--font-main);
+  --shadow: var(--shadow-md);
 }

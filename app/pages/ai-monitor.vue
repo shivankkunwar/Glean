@@ -3,7 +3,7 @@
     <header class="page-header">
       <h1>AI Processing Monitor</h1>
       <div class="actions">
-        <button @click="refresh" :disabled="loading" class="btn-refresh">
+        <button @click="() => refresh()" :disabled="loading" class="btn-refresh">
           {{ loading ? 'Refreshing...' : 'Refresh' }}
         </button>
         <button @click="autoRefresh = !autoRefresh" :class="{ active: autoRefresh }" class="btn-auto">
@@ -312,23 +312,23 @@ const donutSegments = computed(() => {
 .ai-monitor {
   max-width: 1040px;
   margin: 0 auto;
-  padding: 40px 20px;
-  font-family: inherit;
-  color: oklch(25% 0.02 240);
+  padding: 40px 24px;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .page-header h1 {
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 0; color: var(--text-primary);
 }
 
 .actions {
@@ -338,50 +338,54 @@ const donutSegments = computed(() => {
 
 button {
   padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 10px;
+  font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
   border: none;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-ui);
+  transition: all var(--d-fast) var(--ease-out);
 }
 
 .btn-refresh {
-  background: white;
-  color: oklch(25% 0.02 240);
-  border: 1px solid oklch(88% 0.015 240);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-xs);
 }
 
 .btn-refresh:hover {
-  background: oklch(98% 0.01 240);
+  background: var(--bg-raised);
 }
 
 .btn-auto {
   background: transparent;
-  color: oklch(50% 0.02 240);
+  color: var(--text-tertiary);
+  border: 1px solid transparent;
 }
 
 .btn-auto:hover {
-  background: oklch(95% 0.015 240);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
 }
 
 .btn-auto.active {
-  background: oklch(96% 0.03 150);
-  color: oklch(40% 0.1 150);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-color: oklch(52% 0.136 151 / 0.25);
 }
 
 .btn-ghost {
   background: transparent;
-  padding: 4px 8px;
-  font-size: 0.75rem;
-  color: oklch(50% 0.02 240);
-  border: 1px solid oklch(88% 0.015 240);
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-default);
 }
 
 .btn-ghost:hover {
-  background: oklch(98% 0.01 240);
-  color: oklch(25% 0.02 240);
+  background: var(--bg-raised);
+  color: var(--text-primary);
 }
 
 /* Cards & Layout */
@@ -399,11 +403,11 @@ button {
 }
 
 .card {
-  background: white;
-  border-radius: 16px;
-  border: 1px solid oklch(92% 0.01 240);
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
   padding: 24px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-header {
@@ -411,14 +415,15 @@ button {
 }
 
 .card-header h2 {
-  font-size: 1.125rem;
+  font-size: var(--text-lg);
   font-weight: 600;
   margin: 0 0 4px;
+  color: var(--text-primary);
 }
 
 .subtitle {
-  font-size: 0.8125rem;
-  color: oklch(55% 0.015 240);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -426,21 +431,21 @@ button {
 .alert-banner {
   display: flex;
   gap: 12px;
-  background: oklch(97% 0.03 40);
-  border: 1px solid oklch(88% 0.05 40);
+  background: var(--color-warn-bg);
+  border: 1px solid oklch(58% 0.145 38 / 0.25);
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 24px;
 }
 
 .alert-text {
-  font-size: 0.875rem;
-  color: oklch(40% 0.08 40);
+  font-size: var(--text-sm);
+  color: var(--color-warn);
 }
 
 .alert-sub {
   display: block;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   opacity: 0.8;
   margin-top: 2px;
 }
@@ -453,11 +458,11 @@ button {
 }
 
 .big-number {
-  font-size: 2.5rem;
+  font-size: var(--text-4xl);
   font-weight: 300;
   line-height: 1;
   letter-spacing: -0.04em;
-  color: oklch(20% 0.02 240);
+  color: var(--text-primary);
 }
 
 .sparkline-container {
@@ -486,8 +491,8 @@ button {
 .spark-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
-  color: oklch(65% 0.01 240);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
   margin-top: 8px;
 }
 
@@ -507,7 +512,7 @@ button {
 }
 
 .donut-bg {
-  stroke: oklch(95% 0.01 240);
+  stroke: var(--bg-raised);
 }
 
 .donut-segment {
@@ -528,16 +533,17 @@ button {
 }
 
 .donut-total {
-  font-size: 1.5rem;
+  font-size: var(--text-2xl);
   font-weight: 600;
   line-height: 1;
+  color: var(--text-primary);
 }
 
 .donut-label {
-  font-size: 0.6875rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: oklch(60% 0.02 240);
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
@@ -550,7 +556,7 @@ button {
 .legend-item {
   display: flex;
   align-items: center;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
 }
 
 .legend-color {
@@ -561,12 +567,13 @@ button {
 }
 
 .legend-label {
-  color: oklch(40% 0.02 240);
+  color: var(--text-secondary);
   flex-grow: 1;
 }
 
 .legend-value {
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 /* Skip Rates */
@@ -600,17 +607,17 @@ button {
 
 .progress-track {
   height: 8px;
-  background: oklch(93% 0.01 240);
+  background: var(--bg-raised);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: oklch(60% 0.15 250);
+  background: var(--color-accent);
   border-radius: 4px;
-  width: 0; /* Animated in via inline style transition */
-  transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 0;
+  transition: width 1.2s var(--ease-out);
 }
 
 .skip-footer {
@@ -623,12 +630,12 @@ button {
 .minimal-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 .minimal-table th, .minimal-table td {
   padding: 12px 0;
-  border-bottom: 1px solid oklch(95% 0.01 240);
+  border-bottom: 1px solid var(--border-subtle);
   text-align: right;
 }
 
@@ -638,7 +645,7 @@ button {
 
 .minimal-table th {
   font-weight: 500;
-  color: oklch(55% 0.01 240);
+  color: var(--text-muted);
   padding-bottom: 8px;
 }
 
@@ -647,27 +654,27 @@ button {
   text-transform: capitalize;
 }
 
-.highlight { color: oklch(65% 0.15 80); font-weight: 600; }
-.highlight-blue { color: oklch(60% 0.15 250); font-weight: 600; }
-.warning-text { color: oklch(60% 0.20 20); font-weight: 600; }
+.highlight { color: var(--color-process); font-weight: 600; }
+.highlight-blue { color: var(--ref-pine-bright); font-weight: 600; }
+.warning-text { color: var(--color-warn); font-weight: 600; }
 
 /* Badges */
 .badge {
-  font-size: 0.6875rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
-.badge.blue { background: oklch(95% 0.03 250); color: oklch(45% 0.15 250); }
-.badge.red { background: oklch(95% 0.05 20); color: oklch(45% 0.15 20); }
-.badge.gray { background: oklch(95% 0.01 240); color: oklch(45% 0.02 240); }
+.badge.blue { background: var(--color-accent-bg); color: var(--ref-pine); }
+.badge.red { background: var(--color-warn-bg); color: var(--color-warn); }
+.badge.gray { background: var(--bg-raised); color: var(--text-muted); }
 
 /* Failed Jobs */
-.failed-card { border-color: oklch(90% 0.05 20); }
+.failed-card { border-color: oklch(58% 0.145 38 / 0.3); }
 .failed-list { display: flex; flex-direction: column; gap: 16px; }
-.failed-item { padding-bottom: 16px; border-bottom: 1px solid oklch(95% 0.01 240); }
+.failed-item { padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle); }
 .failed-item:last-child { border: none; padding-bottom: 0; }
 
 .failed-meta {
@@ -675,20 +682,20 @@ button {
   align-items: center;
   gap: 12px;
   margin-bottom: 6px;
-  font-size: 0.8125rem;
-  color: oklch(55% 0.01 240);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
 }
 
 .failed-link {
   font-weight: 500;
-  color: oklch(25% 0.02 240);
+  color: var(--text-primary);
   text-decoration: none;
   margin-bottom: 4px;
   display: inline-block;
 }
 
 .failed-link:hover { text-decoration: underline; }
-.failed-error { font-family: monospace; font-size: 0.75rem; color: oklch(50% 0.15 20); background: oklch(98% 0.02 20); padding: 8px; border-radius: 6px; }
+.failed-error { font-family: monospace; font-size: var(--text-xs); color: var(--color-warn); background: var(--color-warn-bg); padding: 8px; border-radius: 8px; }
 
 /* Artifacts Grid */
 .artifacts-grid {
@@ -698,31 +705,31 @@ button {
 }
 
 .artifact-item {
-  background: oklch(98% 0.01 240);
+  background: var(--bg-raised);
   padding: 16px;
   border-radius: 12px;
-  border: 1px solid transparent;
-  transition: background 0.2s ease;
+  border: 1px solid var(--border-subtle);
+  transition: background var(--d-fast) var(--ease-out);
 }
 
-.artifact-item:hover { background: oklch(96% 0.015 240); }
-.artifact-item.isSkipped { opacity: 0.7; }
+.artifact-item:hover { background: var(--border-subtle); }
+.artifact-item.isSkipped { opacity: 0.6; }
 
 .artifact-top { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-.provider { font-size: 0.75rem; font-family: monospace; color: oklch(55% 0.01 240); flex-grow: 1; }
-.time { font-size: 0.75rem; color: oklch(65% 0.01 240); }
+.provider { font-size: var(--text-xs); font-family: monospace; color: var(--text-muted); flex-grow: 1; }
+.time { font-size: var(--text-xs); color: var(--text-muted); }
 
 .artifact-title {
   display: block;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   font-weight: 500;
-  color: oklch(25% 0.02 240);
+  color: var(--text-primary);
   text-decoration: none;
   line-height: 1.4;
 }
 
 .artifact-title:hover { text-decoration: underline; }
-.artifact-skipped-reason { font-size: 0.75rem; margin-top: 8px; color: oklch(55% 0.01 240); }
+.artifact-skipped-reason { font-size: var(--text-xs); margin-top: 8px; color: var(--text-muted); }
 
 /* Animations */
 @keyframes drawLine {

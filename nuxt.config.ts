@@ -5,7 +5,23 @@ export default defineNuxtConfig({
   css: ['~/assets/css/base.css', '~/assets/css/tokens.css'],
   app: {
     head: {
-      title: 'Glean'
+      title: 'Glean — Remember everything. Organize nothing.',
+      link: [
+        {
+          rel: 'preconnect',
+          href: 'https://api.fontshare.com'
+        },
+        {
+          rel: 'stylesheet',
+          href: 'https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap'
+        }
+      ],
+      script: [
+        {
+          src: 'https://unpkg.com/@phosphor-icons/web',
+          defer: true
+        }
+      ]
     }
   },
   pwa: {
@@ -14,8 +30,8 @@ export default defineNuxtConfig({
       name: 'Glean',
       short_name: 'Glean',
       description: 'Save, organize, and find URLs with semantic search.',
-      theme_color: '#f6f2ff',
-      background_color: '#f4f7ff',
+      theme_color: '#f5f0ea',
+      background_color: '#f5f0ea',
       display: 'standalone',
       orientation: 'portrait',
       lang: 'en',
@@ -64,6 +80,11 @@ export default defineNuxtConfig({
           }
         }
       ]
+    },
+    devOptions: {
+      enabled: true,
+      suppressWarnings: true,
+      type: 'module'
     }
   },
   nitro: {

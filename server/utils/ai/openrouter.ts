@@ -43,7 +43,7 @@ function getOpenRouterModels() {
     }
     const parsed = raw
       .split(',')
-      .map((item) => item.trim())
+      .map((item: string) => item.trim())
       .filter(Boolean);
     return parsed.length ? parsed : defaultChain;
   };
@@ -306,7 +306,7 @@ export function createOpenRouterProvider(): AIProvider {
 
       try {
         const result = await callChatCompletion('summarize', input);
-        const summary = String((result.message.summary ?? '').slice(0, 2000) || '');
+        const summary = String(((result.message as any).summary ?? '').slice(0, 2000) || '');
         const confidence = Number(result.message.confidence ?? 0);
         return {
           summary,
@@ -377,4 +377,92 @@ export function createOpenRouterProvider(): AIProvider {
       }
     }
   };
+}
+
+/**
+ * Compress a raw YouTube transcript into a dense semantic digest for AI indexing.
+ * - Chunks the transcript if it exceeds the model token window
+ * - Summarizes each chunk with a focused extraction prompt
+ * - Returns a 1,200-char max combined digest
+ * - Falls back to truncation on any failure
+ */
+export async function compressTranscriptForIndexing(
+  transcript: string,
+  title: string
+): Promise<string> {
+  const apiKey = process.env.AI_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY;
+  if (!apiKey || !transcript) {
+    // No key configured — return truncated version (better than nothing)
+    return transcript.slice(0, 4000);
+  }
+
+  const CHUNK_SIZE = 4000;       // ~1,000 tokens per chunk (safe for free models)
+  const MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+  const BASE_URL = process.env.AI_OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+  const TIMEOUT_MS = 30000;
+
+  // Build chunks
+  const chunks: string[] = [];
+  for (let i = 0; i < transcript.length; i += CHUNK_SIZE) {
+    chunks.push(transcript.slice(i, i + CHUNK_SIZE));
+  }
+
+  async function callModel(prompt: string): Promise<string | null> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      const response = await fetch(`${BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.1,
+          max_tokens: 400
+        }),
+        signal: controller.signal
+      });
+      if (!response.ok) return null;
+      const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+      return data.choices?.[0]?.message?.content?.trim() || null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  // Summarize each chunk
+  const chunkSummaries: string[] = [];
+  for (const chunk of chunks.slice(0, 5)) { // Process at most 5 chunks (~20k chars)
+    const result = await callModel(
+      `You extract key information from a section of a YouTube video transcript.\n` +
+      `Video title: "${title.slice(0, 100)}"\n\n` +
+      `TRANSCRIPT SECTION:\n${chunk}\n\n` +
+      `List the main topics, key concepts, facts, and notable insights covered in this section. ` +
+      `Be specific and concrete. Use 3-6 short bullet points. No intro sentence.`
+    );
+    if (result) chunkSummaries.push(result);
+  }
+
+  if (chunkSummaries.length === 0) {
+    // All chunk calls failed — fallback to raw truncation
+    return transcript.slice(0, 4000);
+  }
+
+  // If only one chunk or few summaries, return them directly
+  const combined = chunkSummaries.join('\n\n');
+  if (combined.length <= 1500) return combined;
+
+  // Final synthesis pass when we have multiple chunk summaries
+  const merged = await callModel(
+    `You are summarizing a full YouTube video based on section-by-section notes.\n` +
+    `Video title: "${title.slice(0, 100)}"\n\n` +
+    `SECTION NOTES:\n${combined.slice(0, 8000)}\n\n` +
+    `Write a final semantic digest of this video in 150-200 words. ` +
+    `Focus on: main topic, key concepts/technologies mentioned, insights, and what a viewer would learn. ` +
+    `Be specific and searchable. No bullet points.`
+  );
+
+  return merged || combined.slice(0, 1500);
 }

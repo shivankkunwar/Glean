@@ -68,10 +68,13 @@ async function performSemanticSearch(q: string, categoryId: number | null, limit
           b.url,
           b.title,
           b.description,
+          b.summary,
           b.og_image,
           b.favicon,
           b.domain,
           b.status,
+          b.ai_status,
+          b.source_type,
           b.created_at
          FROM bookmarks b
          WHERE b.id = ?`
@@ -85,12 +88,16 @@ async function performSemanticSearch(q: string, categoryId: number | null, limit
       url: String(row.url),
       title: row.title ? String(row.title) : null,
       description: row.description ? String(row.description) : null,
+      summary: row.summary ? String(row.summary) : null,
       ogImage: row.og_image ? String(row.og_image) : null,
       favicon: row.favicon ? String(row.favicon) : null,
       domain: row.domain ? String(row.domain) : null,
       status: String(row.status),
+      aiStatus: row.ai_status ? String(row.ai_status) : null,
+      sourceType: row.source_type ? String(row.source_type) : null,
       createdAt: String(row.created_at),
-      score: result.score
+      score: result.score,
+      tags: []
     };
   }).filter(Boolean);
 
@@ -130,10 +137,13 @@ async function performHybridSearch(q: string, categoryId: number | null, limit: 
           b.url,
           b.title,
           b.description,
+          b.summary,
           b.og_image,
           b.favicon,
           b.domain,
           b.status,
+          b.ai_status,
+          b.source_type,
           b.created_at
          FROM bookmarks b
          WHERE b.id = ?`
@@ -147,12 +157,16 @@ async function performHybridSearch(q: string, categoryId: number | null, limit: 
       url: String(row.url),
       title: row.title ? String(row.title) : null,
       description: row.description ? String(row.description) : null,
+      summary: row.summary ? String(row.summary) : null,
       ogImage: row.og_image ? String(row.og_image) : null,
       favicon: row.favicon ? String(row.favicon) : null,
       domain: row.domain ? String(row.domain) : null,
       status: String(row.status),
+      aiStatus: row.ai_status ? String(row.ai_status) : null,
+      sourceType: row.source_type ? String(row.source_type) : null,
       createdAt: String(row.created_at),
-      score: result.score
+      score: result.score,
+      tags: []
     };
   }).filter(Boolean);
 
