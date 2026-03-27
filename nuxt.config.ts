@@ -19,16 +19,25 @@ export default defineNuxtConfig({
       ],
       link: [
         {
-          rel: 'apple-touch-icon',
-          href: '/icons/pwa-icon-192.png'
-        },
-        {
           rel: 'preconnect',
           href: 'https://api.fontshare.com'
         },
         {
+          rel: 'preconnect',
+          href: 'https://fonts.googleapis.com'
+        },
+        {
+          rel: 'preconnect',
+          href: 'https://fonts.gstatic.com',
+          crossorigin: 'anonymous'
+        },
+        {
           rel: 'stylesheet',
           href: 'https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap'
+        },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400;1,9..40,500&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap'
         }
       ],
       script: [
