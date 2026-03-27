@@ -1,9 +1,7 @@
 <template>
   <div class="v6-shell">
     <!-- Splash — shown once per session -->
-    <ClientOnly>
-      <SplashScreen v-if="showSplash" @done="showSplash = false" />
-    </ClientOnly>
+    <SplashScreen v-if="showSplash" @done="showSplash = false" />
     <!-- HEADER -->
     <header class="site-header" :class="{ scrolled: isScrolled }" id="site-header">
       <NuxtLink to="/" class="header-logo">Glean</NuxtLink>
@@ -107,8 +105,8 @@ import { useRoute } from '#app';
 import { usePWAInstall } from '~/composables/usePWAInstall';
 import SplashScreen from '~/components/SplashScreen.vue';
 
-// Show splash once per browser session
-const showSplash = ref(false);
+// Show splash once per browser session — default true so it renders before page content
+const showSplash = ref(true);
 
 const route = useRoute();
 const isAuthenticated = useState<boolean>('isAuthenticated', () => false);
@@ -204,13 +202,14 @@ async function logout() {
 }
 
 onMounted(() => {
-  // Show splash if ?splash=1 or not already seen this session
   const showForced = route.query.splash === '1';
   if (showForced || !sessionStorage.getItem('glean-splash-seen')) {
     showSplash.value = true;
     if (!showForced) {
       sessionStorage.setItem('glean-splash-seen', '1');
     }
+  } else {
+    showSplash.value = false;
   }
   loadCategories();
   window.addEventListener('scroll', onScroll, { passive: true });
