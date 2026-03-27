@@ -1,9 +1,7 @@
 <template>
   <Transition
-    enter-active-class="install-enter"
+     enter-active-class="install-enter"
     leave-active-class="install-leave"
-    @enter="onEnter"
-    @leave="onLeave"
   >
     <div
       v-if="canInstall() && !isDismissed"
@@ -16,7 +14,7 @@
       role="banner"
       aria-label="Install Glean app"
       @mouseenter="onHover"
-      @mouseleave="onLeave"
+      @mouseleave="onMouseLeave"
     >
       <!-- Collapsed State: Just Icon -->
       <button
@@ -141,15 +139,6 @@ function stopBreathing() {
     clearTimeout(breatheInterval);
     breatheInterval = null;
   }
-}
-
-// Spring physics animation helpers
-function onEnter(el: Element) {
-  // Entrance animation handled by CSS transitions
-}
-
-function onLeave(el: Element) {
-  // Exit animation handled by CSS transitions
 }
 
 onMounted(() => {
