@@ -24,9 +24,9 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/icons/pwa-icon-192.png' },
+        { rel: 'icon', type: 'image/png', sizes: '144x144', href: '/icons/pwa-icon-144.png' },
         { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/icons/pwa-icon-512.png' },
-        { rel: 'apple-touch-icon', href: '/icons/pwa-icon-192.png' },
+        { rel: 'apple-touch-icon', href: '/icons/pwa-icon-144.png' },
         { rel: 'manifest', href: '/manifest.webmanifest' },
         {
           rel: 'preconnect',
