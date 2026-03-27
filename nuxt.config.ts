@@ -39,10 +39,20 @@ export default defineNuxtConfig({
       start_url: '/',
       icons: [
         {
+          src: '/icons/pwa-icon-192.png',
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: '/icons/pwa-icon-512.png',
+          sizes: '512x512',
+          type: 'image/png'
+        },
+        {
           src: '/icons/pwa-icon.svg',
           sizes: 'any',
           type: 'image/svg+xml',
-          purpose: 'any'
+          purpose: 'any maskable'
         }
       ],
       share_target: {

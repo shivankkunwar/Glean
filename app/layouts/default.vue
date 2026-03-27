@@ -76,6 +76,22 @@
       <slot />
     </main>
 
+    <!-- PWA INSTALL BANNER -->
+    <div v-if="showInstallBanner" class="pwa-install-banner" role="banner">
+      <div class="pwa-install-content">
+        <i class="ph ph-download-simple pwa-install-icon" />
+        <span class="pwa-install-text">Add Glean to your home screen for quick access</span>
+      </div>
+      <div class="pwa-install-actions">
+        <button class="pwa-install-btn pwa-install-btn--secondary" @click="dismissBanner">
+          Not now
+        </button>
+        <button class="pwa-install-btn pwa-install-btn--primary" @click="installPWA">
+          Add to home screen
+        </button>
+      </div>
+    </div>
+
     <!-- TOAST CONTAINER (global) -->
     <div class="toast-container" id="toast-container" aria-live="polite" />
   </div>
@@ -84,10 +100,39 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from '#app';
+import { usePWAInstall } from '~/composables/usePWAInstall';
 
 const route = useRoute();
 const isAuthenticated = useState<boolean>('isAuthenticated', () => false);
 const categories = ref<Array<{ id: number; name: string; color: string; icon: string; count: number }>>([]);
+
+const { canInstall, install, dismissBanner, showInstallBanner } = usePWAInstall();
+
+async function installPWA() {
+  await install();
+}
+
+function showToast(msg: string) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => { t.className = 'toast toast-out'; setTimeout(() => t.remove(), 300); }, 2700);
+}
+
+onMounted(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const shared = urlParams.get('shared');
+  if (shared === '1') {
+    showToast('Link saved to your vault!');
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (shared === '0') {
+    showToast('Could not save link. Try again.');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+});
 const totalCount = ref(0);
 const collectionsOpen = ref(false);
 const isScrolled = ref(false);
@@ -327,6 +372,53 @@ watch(() => route.fullPath, () => { collectionsOpen.value = false; });
 .collections-logout:hover { background: var(--bg-raised); color: oklch(55% 0.18 20); }
 
 .v6-main { min-height: 100dvh; }
+
+/* ── PWA INSTALL BANNER ─────────────────────────────────────────────── */
+.pwa-install-banner {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px; box-shadow: var(--shadow-xl);
+  padding: 14px 20px; z-index: var(--z-modal);
+  animation: slideUp 0.3s var(--ease-out);
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.pwa-install-content {
+  display: flex; align-items: center; gap: 12px;
+}
+.pwa-install-icon { font-size: 24px; color: var(--color-accent); }
+.pwa-install-text { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); }
+.pwa-install-actions { display: flex; gap: 8px; }
+.pwa-install-btn {
+  padding: 8px 16px; border-radius: 10px; font-size: var(--text-sm); font-weight: 600;
+  cursor: pointer; transition: all var(--d-fast);
+}
+.pwa-install-btn--secondary {
+  background: var(--bg-raised); color: var(--text-secondary); border: none;
+}
+.pwa-install-btn--secondary:hover { background: var(--bg-ground); }
+.pwa-install-btn--primary {
+  background: var(--color-accent); color: var(--text-inverse); border: none;
+}
+.pwa-install-btn--primary:hover { filter: brightness(1.1); }
+
+@media (max-width: 600px) {
+  .pwa-install-banner {
+    left: 16px; right: 16px; transform: none;
+    flex-direction: column; gap: 12px;
+  }
+  .pwa-install-content { width: 100%; }
+  .pwa-install-actions { width: 100%; }
+  .pwa-install-btn { flex: 1; }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
 
 /* ── RESPONSIVE ─────────────────────────────────────────────────────── */
 @media (max-width: 767px) {

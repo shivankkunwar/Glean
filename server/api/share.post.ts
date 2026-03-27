@@ -1,38 +1,33 @@
-import { defineEventHandler, readBody } from 'h3';
-import { parseIngestBody, normalizeIngestPayload, ingestUrl } from '../utils/ingest';
+import { defineEventHandler, readBody, sendRedirect } from 'h3';
+import { normalizeIngestPayload, ingestUrl } from '../utils/ingest';
 
 function extractUrlFromText(text?: string) {
-  if (!text) {
-    return null;
-  }
+  if (!text) return null;
   const match = text.match(/https?:\/\/[^\s]+/);
   return match ? match[0] : null;
 }
 
 export default defineEventHandler(async (event) => {
-  const contentType = String(event.headers.get('content-type') || '');
   const body = await readBody<Record<string, string>>(event);
 
   const inputUrl =
-    body?.url || body?.text && extractUrlFromText(body.text) || body?.title || extractUrlFromText(body?.title);
+    body?.url || (body?.text && extractUrlFromText(body.text)) || body?.title || extractUrlFromText(body?.title);
 
   if (!inputUrl) {
-    return { statusCode: 400, message: 'No URL provided in share payload' };
+    return sendRedirect(event, '/?shared=0', 302);
   }
 
-  const payload = {
-    url: inputUrl,
-    tags: [],
-    title: body?.title || undefined,
-    text: body?.text || undefined
-  };
+  try {
+    const payload = {
+      url: inputUrl,
+      tags: [] as string[],
+      title: body?.title || undefined,
+      text: body?.text || undefined
+    };
 
-  const result = ingestUrl(normalizeIngestPayload(payload as any));
-  return {
-    ok: true,
-    id: result.id,
-    status: result.status,
-    duplicate: result.duplicate,
-    originalContentType: contentType
-  };
+    await ingestUrl(normalizeIngestPayload(payload as any));
+    return sendRedirect(event, '/?shared=1', 302);
+  } catch {
+    return sendRedirect(event, '/?shared=0', 302);
+  }
 });

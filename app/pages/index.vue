@@ -493,6 +493,7 @@ async function doSave() {
     inputVal.value = '';
     inputMode.value = 'idle';
     urlPreview.value = null;
+    updateRouteSearch('');
     
     if (isNote) {
       showToast('Note saved to your vault.');
@@ -510,6 +511,7 @@ async function doSave() {
 
 function pasteYouTube() {
   inputVal.value = '';
+  updateRouteSearch('');
   nextTick(() => {
     smartInputEl.value?.focus();
     // Leave empty — user pastes their own YouTube URL
