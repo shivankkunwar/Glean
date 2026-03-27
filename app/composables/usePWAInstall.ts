@@ -12,9 +12,19 @@ export function usePWAInstall() {
   }
 
   async function install(): Promise<boolean> {
-    if (!deferredPrompt.value) return false;
+    if (!deferredPrompt.value) {
+      console.warn('No install prompt available');
+      return false;
+    }
     
     const promptEvent = deferredPrompt.value as any;
+    
+    // Check if prompt method exists (BeforeInstallPromptEvent)
+    if (typeof promptEvent.prompt !== 'function') {
+      console.warn('Install prompt not available - may need to wait for browser to trigger beforeinstallprompt event');
+      return false;
+    }
+    
     promptEvent.prompt();
     
     const { outcome } = await promptEvent.userChoice;

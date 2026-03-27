@@ -63,8 +63,14 @@
         </div>
         
         <div class="install-actions">
-          <button class="install-btn install-btn--primary" @click="install">
-            <span class="install-btn-text">Get</span>
+          <button 
+            class="install-btn install-btn--primary" 
+            @click="handleInstall"
+            :disabled="isInstalling"
+          >
+            <span v-if="isInstalling" class="install-btn-text">Installing...</span>
+            <span v-else-if="installError" class="install-btn-text">Try Chrome Menu →</span>
+            <span v-else class="install-btn-text">Get</span>
           </button>
         </div>
       </div>
@@ -82,10 +88,33 @@ const installRef = ref<HTMLElement | null>(null);
 const isExpanded = ref(false);
 const isDismissed = ref(false);
 const isBreathing = ref(false);
+const isInstalling = ref(false);
+const installError = ref(false);
 
 // Auto-breathe animation interval
 let breatheInterval: ReturnType<typeof setInterval> | null = null;
 let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
+
+async function handleInstall() {
+  isInstalling.value = true;
+  installError.value = false;
+  
+  try {
+    const result = await install();
+    if (!result) {
+      installError.value = true;
+      // Auto-dismiss error after 3 seconds
+      setTimeout(() => {
+        installError.value = false;
+      }, 3000);
+    }
+  } catch (err) {
+    console.error('Install failed:', err);
+    installError.value = true;
+  } finally {
+    isInstalling.value = false;
+  }
+}
 
 function expand() {
   isExpanded.value = true;
@@ -378,6 +407,12 @@ onBeforeUnmount(() => {
 .install-btn--primary:active {
   transform: scale(0.98);
   transition-duration: 100ms;
+}
+
+.install-btn--primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Transitions */
