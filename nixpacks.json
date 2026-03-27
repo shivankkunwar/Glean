@@ -1,0 +1,9 @@
+{
+  "providers": ["node"],
+  "build": {
+    "aptPkgs": ["python3", "build-essential", "pkg-config"]
+  },
+  "setup": {
+    "nixPkgs": ["python3", "pkg-config", "nodejs_22"]
+  }
+}

@@ -2,6 +2,9 @@
   "name": "glean",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
