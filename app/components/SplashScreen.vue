@@ -88,20 +88,7 @@ function dismiss() {
   visible.value = false;
 }
 
-onMounted(async () => {
-  try {
-    const cards = await $fetch<SplashCard[]>('/api/splash-cards');
-    if (Array.isArray(cards) && cards.length > 0) {
-      const newCards = [...displayCards.value];
-      cards.forEach((c, i) => {
-        if (i < 5) newCards[i] = { ...newCards[i], ...c };
-      });
-      displayCards.value = newCards;
-    }
-  } catch (e) {
-    console.warn('Splash API fetch failed:', e);
-  }
-
+onMounted(() => {
   // Auto-dismiss after 4.8s
   setTimeout(dismiss, 4800);
 });
