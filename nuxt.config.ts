@@ -61,7 +61,7 @@ export default defineNuxtConfig({
   pwa: {
     registerType: 'autoUpdate',
     manifestFilename: 'manifest.webmanifest',
-    includeAssets: ['favicon.ico', 'icons/*.png', 'icons/*.svg', 'screenshots/*.png'],
+    includeAssets: ['favicon.ico', 'icons/pwa-icon-144.png', 'icons/pwa-icon-512.png', 'screenshots/*.png'],
     workbox: {
       maximumFileSizeToCacheInBytes: 3000000,
       navigateFallback: undefined,
