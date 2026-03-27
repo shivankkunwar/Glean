@@ -6,7 +6,22 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'Glean — Remember everything. Organize nothing.',
+      meta: [
+        { name: 'description', content: 'Remember everything. Organize nothing. Your personal knowledge vault.' },
+        { property: 'og:title', content: 'Glean — Remember everything. Organize nothing.' },
+        { property: 'og:description', content: 'Remember everything. Organize nothing. Your personal knowledge vault.' },
+        { property: 'og:image', content: '/thumbnail.png' },
+        { property: 'og:type', content: 'website' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'Glean — Remember everything. Organize nothing.' },
+        { name: 'twitter:description', content: 'Remember everything. Organize nothing. Your personal knowledge vault.' },
+        { name: 'twitter:image', content: '/thumbnail.png' }
+      ],
       link: [
+        {
+          rel: 'apple-touch-icon',
+          href: '/icons/pwa-icon-192.png'
+        },
         {
           rel: 'preconnect',
           href: 'https://api.fontshare.com'
