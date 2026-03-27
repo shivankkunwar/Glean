@@ -8,6 +8,11 @@ export default defineNuxtConfig({
       title: 'Glean — Remember everything. Organize nothing.',
       meta: [
         { name: 'description', content: 'Remember everything. Organize nothing. Your personal knowledge vault.' },
+        { name: 'theme-color', content: '#f5f0ea' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+        { name: 'apple-mobile-web-app-title', content: 'Glean' },
         { property: 'og:title', content: 'Glean — Remember everything. Organize nothing.' },
         { property: 'og:description', content: 'Remember everything. Organize nothing. Your personal knowledge vault.' },
         { property: 'og:image', content: '/thumbnail.png' },
@@ -18,6 +23,11 @@ export default defineNuxtConfig({
         { name: 'twitter:image', content: '/thumbnail.png' }
       ],
       link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/icons/pwa-icon-192.png' },
+        { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/icons/pwa-icon-512.png' },
+        { rel: 'apple-touch-icon', href: '/icons/pwa-icon-192.png' },
+        { rel: 'manifest', href: '/manifest.webmanifest' },
         {
           rel: 'preconnect',
           href: 'https://api.fontshare.com'
@@ -50,49 +60,11 @@ export default defineNuxtConfig({
   },
   pwa: {
     registerType: 'autoUpdate',
-    manifest: {
-      name: 'Glean',
-      short_name: 'Glean',
-      description: 'Save, organize, and find URLs with semantic search.',
-      theme_color: '#f5f0ea',
-      background_color: '#f5f0ea',
-      display: 'standalone',
-      orientation: 'portrait',
-      lang: 'en',
-      scope: '/',
-      start_url: '/',
-      icons: [
-        {
-          src: '/icons/pwa-icon-192.png',
-          sizes: '192x192',
-          type: 'image/png'
-        },
-        {
-          src: '/icons/pwa-icon-512.png',
-          sizes: '512x512',
-          type: 'image/png'
-        },
-        {
-          src: '/icons/pwa-icon.svg',
-          sizes: 'any',
-          type: 'image/svg+xml',
-          purpose: 'any maskable'
-        }
-      ],
-      share_target: {
-        action: '/api/share',
-        method: 'POST',
-        enctype: 'application/x-www-form-urlencoded',
-        params: {
-          title: 'title',
-          text: 'text',
-          url: 'url'
-        }
-      }
-    },
+    manifestFilename: 'manifest.webmanifest',
+    includeAssets: ['favicon.ico', 'icons/*.png', 'icons/*.svg', 'screenshots/*.png'],
     workbox: {
       maximumFileSizeToCacheInBytes: 3000000,
-      navigateFallback: '/',
+      navigateFallback: undefined,
       globPatterns: ['**/*.{js,css,ico,png,svg,webmanifest}'],
       runtimeCaching: [
         {
@@ -107,7 +79,7 @@ export default defineNuxtConfig({
           }
         },
         {
-          urlPattern: /\/(?:_nuxt|_npm|icons|.*\.(?:css|js|woff2|png|jpg|jpeg|svg|webp))/,
+          urlPattern: /\/(?:_nuxt|_npm|icons|screenshots|.*\.(?:css|js|woff2|png|jpg|jpeg|svg|webp))/,
           handler: 'CacheFirst',
           options: {
             cacheName: 'glean-static',
@@ -120,6 +92,10 @@ export default defineNuxtConfig({
       enabled: true,
       suppressWarnings: true,
       type: 'module'
+    },
+    client: {
+      registerPlugin: true,
+      installPrompt: true
     }
   },
   nitro: {
