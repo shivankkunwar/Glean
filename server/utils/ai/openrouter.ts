@@ -81,7 +81,25 @@ This source is a video. Focus on the title and any available description to unde
   if (sourceType === 'github') {
     return `
 
-This source is a GitHub repository or code-related page. Focus on the project purpose, technologies used, and key concepts.`;
+This source is a GitHub repository or code-related page. Focus on the project purpose, technologies used, key concepts, and notable features or achievements.`;
+  }
+
+  if (sourceType === 'reddit') {
+    return `
+
+This source is a Reddit post with comments. Focus on the post title, post body, and top comment themes. Extract key discussions, opinions, and any linked resources mentioned.`;
+  }
+
+  if (sourceType === 'article') {
+    return `
+
+This source is a web article or blog post. Focus on the main topic, key arguments, and notable insights or facts.`;
+  }
+
+  if (sourceType === 'x-article') {
+    return `
+
+This is a long-form article published natively on X (formerly Twitter). Extract the main thesis, key arguments, section topics, and named concepts. Treat it like a blog post, not a social post.`;
   }
   
   return '';
@@ -108,13 +126,18 @@ Tag rules:
 - Avoid filler tags like: interesting, article, post, thread, reading list, resource, notes, thoughts.
 - Do not include source/platform tags like twitter, youtube, github; the system adds those separately.
 - Prefer terms like "cap theorem" over broad terms like "distributed systems" when both are available.
-- If the text is a list of references, extract the named concepts and works, not just the fact that it is a list.
-- For technical lists, extract each named technology, pattern, or concept mentioned.
 
 Topics rules:
 - Topics are broader buckets than tags.
 - Output 1 to 4 topics.
 - Topics should still be specific enough to be useful for retrieval.
+
+Key Entities rules:
+- Extract specific named things: libraries, frameworks, tools, APIs, papers, companies, protocols, products.
+- Extract version numbers if mentioned (e.g., "Node.js 20", "React 18").
+- Extract proper nouns and technical terms.
+- Output 3 to 10 entities when the text contains enough specificity.
+- Entities should be searchable exact matches: "LangChain", "pgvector", "GPT-4", "Docker".
 
 Category rules:
 - Set categoryHint only when the category is obvious from the text.
@@ -127,7 +150,7 @@ Confidence scoring:
 - below 0.3 = weak evidence
 
 Return valid JSON only with exactly this structure:
-{"tags": string[], "topics": string[], "categoryHint": string|null, "confidence": number}`;
+{"tags": string[], "topics": string[], "keyEntities": string[], "categoryHint": string|null, "confidence": number}`;
 }
 
 function buildSummarizeSystemPrompt(): string {
@@ -332,6 +355,9 @@ export function createOpenRouterProvider(): AIProvider {
         const topics = Array.isArray(result.message.topics)
           ? result.message.topics.map((topic) => String(topic).toLowerCase().trim()).filter(Boolean)
           : [];
+        const keyEntities = Array.isArray(result.message.keyEntities)
+          ? result.message.keyEntities.map((e: unknown) => String(e).trim()).filter(Boolean)
+          : [];
         const categoryHint = result.message.categoryHint
           ? String(result.message.categoryHint)
           : undefined;
@@ -340,6 +366,7 @@ export function createOpenRouterProvider(): AIProvider {
         return {
           tags,
           topics,
+          keyEntities,
           categoryHint,
           confidence: Number.isFinite(confidence) ? confidence : 0,
           provider: 'openrouter',

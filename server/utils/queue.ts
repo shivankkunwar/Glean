@@ -1,4 +1,5 @@
 import PQueue from 'p-queue';
+import { createHash } from 'crypto';
 import { getDb } from './db';
 import { getBookmarkMetadata } from './extract';
 import { buildCanonicalDocument } from './ai/canonicalize';
@@ -307,6 +308,7 @@ async function processClassifyJob(job: JobRow) {
     value: {
       tags: result.tags,
       topics: result.topics ?? [],
+      keyEntities: result.keyEntities ?? [],
       categoryHint: result.categoryHint,
       decision
     },
@@ -389,19 +391,114 @@ async function processSummarizeJob(job: JobRow) {
     });
 }
 
+function getAIArtifacts(bookmarkId: number): {
+  summary: string | null;
+  tags: string[];
+  topics: string[];
+  entities: string[];
+} {
+  const { client } = getDb();
+  
+  const summaryRow = client
+    .prepare('SELECT value_json FROM bookmark_ai_artifacts WHERE bookmark_id = ? AND kind = ? ORDER BY id DESC LIMIT 1')
+    .get(bookmarkId, 'summary') as { value_json: string } | undefined;
+  
+  const tagsRow = client
+    .prepare('SELECT value_json FROM bookmark_ai_artifacts WHERE bookmark_id = ? AND kind = ? ORDER BY id DESC LIMIT 1')
+    .get(bookmarkId, 'tags') as { value_json: string } | undefined;
+  
+  let summary: string | null = null;
+  let tags: string[] = [];
+  let topics: string[] = [];
+  let entities: string[] = [];
+  
+  if (summaryRow) {
+    const parsed = JSON.parse(summaryRow.value_json);
+    summary = parsed.summary || null;
+  }
+  
+  if (tagsRow) {
+    const parsed = JSON.parse(tagsRow.value_json);
+    tags = parsed.tags || [];
+    topics = parsed.topics || [];
+    entities = parsed.keyEntities || [];
+  }
+  
+  return { summary, tags, topics, entities };
+}
+
+function buildEmbedInput(bookmarkId: number, canonical: ReturnType<typeof getCanonicalForBookmark>): { text: string; hash: string } {
+  const { summary, tags, topics, entities } = getAIArtifacts(bookmarkId);
+  
+  const parts: string[] = [];
+  
+  if (canonical.title) {
+    parts.push(`TITLE: ${canonical.title}`);
+  }
+  
+  if (summary) {
+    parts.push(`SUMMARY: ${summary}`);
+  }
+  
+  if (tags.length > 0) {
+    parts.push(`TAGS: ${tags.join(', ')}`);
+  }
+  
+  if (entities.length > 0) {
+    parts.push(`ENTITIES: ${entities.join(', ')}`);
+  }
+  
+  if (topics.length > 0) {
+    parts.push(`TOPICS: ${topics.join(', ')}`);
+  }
+  
+  if (canonical.source_type === 'twitter' && canonical.source_metadata) {
+    const meta = typeof canonical.source_metadata === 'string' 
+      ? JSON.parse(canonical.source_metadata) 
+      : canonical.source_metadata;
+    
+    if (meta?.listedItems?.length > 0) {
+      parts.push(`LIST: ${meta.listedItems.join(', ')}`);
+    }
+  }
+  
+  parts.push(`SOURCE: ${canonical.source_type || 'generic'}`);
+  
+  const text = parts.join('\n');
+  const hash = createHash('sha256').update(text).digest('hex').slice(0, 16);
+  
+  return { text, hash };
+}
+
 async function processEmbedJob(job: JobRow) {
+  const { client } = getDb();
   const canonical = getCanonicalForBookmark(job.bookmark_id);
+  const embedInput = buildEmbedInput(job.bookmark_id, canonical);
+  
+  // Skip if hash unchanged
+  const existingHash = client
+    .prepare('SELECT embed_hash FROM bookmarks WHERE id = ?')
+    .get(job.bookmark_id) as { embed_hash: string | null } | undefined;
+  
+  if (existingHash?.embed_hash === embedInput.hash) {
+    client
+      .prepare('UPDATE bookmarks SET ai_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run('done', job.bookmark_id);
+    return;
+  }
+  
   const decision = resolveProviderDecision('embed', canonical);
   const provider = resolveProvider('embed', canonical);
-  const result = await provider.embed([canonical.canonicalText]);
-  const { client } = getDb();
+  
+  const result = await provider.embed([embedInput.text]);
 
   persistArtifact({
     bookmarkId: job.bookmark_id,
     kind: 'embedding',
     value: {
       vectors: result.vectors,
-      decision
+      decision,
+      embedHash: embedInput.hash
     },
     provider: result.provider,
     model: result.model,
@@ -424,6 +521,7 @@ async function processEmbedJob(job: JobRow) {
       `UPDATE bookmarks
        SET embed_model = @model,
            embedding_version = @version,
+           embed_hash = @embedHash,
            ai_status = CASE WHEN @skipped = 1 THEN 'skipped' ELSE 'done' END,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = @bookmarkId`
@@ -432,7 +530,8 @@ async function processEmbedJob(job: JobRow) {
       model: result.model,
       version: result.version ?? 'v1',
       skipped: result.skipped ? 1 : 0,
-      bookmarkId: job.bookmark_id
+      bookmarkId: job.bookmark_id,
+      embedHash: embedInput.hash
     });
 }
 

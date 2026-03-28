@@ -1,4 +1,4 @@
-export type CanonicalSourceType = 'youtube' | 'twitter' | 'github' | 'article' | 'generic' | 'other';
+export type CanonicalSourceType = 'youtube' | 'twitter' | 'github' | 'reddit' | 'article' | 'x-article' | 'generic' | 'other';
 
 export type CanonicalDocument = {
   title?: string;
@@ -24,7 +24,7 @@ export type CanonicalDocument = {
     };
     media?: {
       photos?: Array<{ url: string }>;
-      videos?: Array<{ url: string }>;
+      videos?: Array<{ url: string; duration?: number; views?: number }>;
     };
     thread?: Array<{
       text?: string;
@@ -33,6 +33,21 @@ export type CanonicalDocument = {
     quotedTweet?: {
       text?: string;
       author?: { name?: string; screen_name?: string };
+    };
+    redditPost?: {
+      postTitle: string;
+      postBody: string | null;
+      subreddit: string;
+      score: number;
+      topComments: Array<{ authorName: string; body: string; score: number }>;
+    };
+    githubRepo?: {
+      repoName: string;
+      description: string | null;
+      language: string | null;
+      stars: number;
+      topics: string[];
+      readme: string | null;
     };
   };
   tokenEstimate: number;
@@ -49,6 +64,7 @@ export type AIResultMeta = {
 export type AIClassifyResult = {
   tags: string[];
   topics?: string[];
+  keyEntities?: string[];
   categoryHint?: string;
   confidence: number;
   summary?: string;

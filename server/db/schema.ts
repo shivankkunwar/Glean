@@ -30,6 +30,7 @@ export const bookmarks = sqliteTable(
     embeddingVersion: text('embedding_version'),
     classificationVersion: text('classification_version'),
     embedModel: text('embed_model'),
+    embedHash: text('embed_hash'),
     classifyModel: text('classify_model'),
     summaryModel: text('summary_model'),
     artifactPolicyVersion: text('artifact_policy_version'),

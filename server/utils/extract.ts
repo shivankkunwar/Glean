@@ -4,7 +4,45 @@ import { load } from 'cheerio';
 // @ts-ignore
 import { YoutubeTranscript } from 'youtube-transcript/dist/youtube-transcript.esm.js';
 
-export type BookmarkSourceType = 'youtube' | 'twitter' | 'github' | 'article' | 'generic';
+export type BookmarkSourceType = 'youtube' | 'twitter' | 'github' | 'article' | 'generic' | 'reddit';
+
+export type RedditMetadata = {
+  postId: string;
+  subreddit: string;
+  authorName: string;
+  authorHandle: string;
+  postTitle: string;
+  postBody: string | null;
+  score: number;
+  permalink: string;
+  createdAt: number;
+  url: string;
+  isSelf: boolean;
+  topComments: Array<{
+    authorName: string;
+    authorHandle: string;
+    body: string;
+    score: number;
+  }>;
+  linkedUrl?: string;
+};
+
+export type GitHubMetadata = {
+  repoName: string;
+  description: string | null;
+  language: string | null;
+  stars: number;
+  forks: number;
+  topics: string[];
+  readme: string | null;
+  owner: string;
+  repo: string;
+  isArchived: boolean;
+  isFork: boolean;
+  license: string | null;
+  defaultBranch: string;
+  updatedAt: string;
+};
 
 export type TweetMetadata = {
   text: string;
@@ -23,7 +61,7 @@ export type TweetMetadata = {
   };
   media?: {
     photos?: Array<{ url: string }>;
-    videos?: Array<{ url: string }>;
+    videos?: Array<{ url: string; duration?: number; views?: number }>;
   };
   thread?: Array<{
     text?: string;
@@ -43,7 +81,7 @@ export type BookmarkMetadata = {
   favicon: string | null;
   domain: string;
   sourceType: BookmarkSourceType;
-  sourceMetadata?: TweetMetadata | Record<string, unknown>;
+  sourceMetadata?: TweetMetadata | RedditMetadata | GitHubMetadata | Record<string, unknown>;
 };
 
 function parseUrlParts(url: string) {
@@ -52,9 +90,16 @@ function parseUrlParts(url: string) {
     hostname: parsed.hostname,
     isYouTube: /youtube\.com$|youtu\.be$/.test(parsed.hostname),
     isTwitter: /x\.com$|twitter\.com$/.test(parsed.hostname),
-    isGitHub: /github\.com$/.test(parsed.hostname),
-    isYoutubeWatch: /\/watch/.test(parsed.pathname) || /youtu\.be/.test(parsed.hostname)
+    isGitHub: parsed.hostname.endsWith('github.com'),
+    isYoutubeWatch: /\/watch/.test(parsed.pathname) || /youtu\.be/.test(parsed.hostname),
+    isReddit: parsed.hostname.endsWith('reddit.com') || parsed.hostname === 'old.reddit.com',
+    isGitHubApi: /api\.github\.com$/.test(parsed.hostname)
   };
+}
+
+function isFxTwitterArticle(fxData: Awaited<ReturnType<typeof fetchFullTweetViaFxTwitter>>): boolean {
+  if (!fxData) return false;
+  return !!(fxData.rawTweet?.article || fxData.rawTweet?.tweet_type === 'article');
 }
 
 export function normalizeTwitterUrl(url: string): string {
@@ -163,6 +208,11 @@ async function fetchFullTweetViaFxTwitter(tweetUrl: string): Promise<{
     text?: string;
     author?: { name?: string; screen_name?: string };
   };
+  rawTweet?: {
+    article?: Record<string, unknown>;
+    tweet_type?: string;
+    [key: string]: unknown;
+  };
 } | null> {
   try {
     // Extract username and tweet ID from URL
@@ -249,9 +299,20 @@ async function fetchFullTweetViaFxTwitter(tweetUrl: string): Promise<{
       };
     };
     
-    if (data.code === 200 && data.tweet?.text) {
+    if (data.code === 200 && (data.tweet?.text || data.tweet?.article)) {
+      // For articles, use preview_text or link as fallback text
+      const tweetText = data.tweet.text || data.tweet.article?.preview_text || '';
+      
+      // Extract full article content from blocks if available
+      let articleBody: string | null = null;
+      if (data.tweet.article?.content?.blocks) {
+        articleBody = data.tweet.article.content.blocks
+          .map((block: { text?: string }) => block.text || '')
+          .join('\n\n');
+      }
+      
       // Extract t.co links from tweet text
-      const tcoLinks = [...data.tweet.text.matchAll(/https?:\/\/t\.co\/\w+/g)].map(m => m[0]);
+      const tcoLinks = [...tweetText.matchAll(/https?:\/\/t\.co\/\w+/g)].map(m => m[0]);
       
       // Resolve t.co links
       const resolvedLinks = tcoLinks.length > 0 
@@ -259,16 +320,16 @@ async function fetchFullTweetViaFxTwitter(tweetUrl: string): Promise<{
         : new Map<string, string>();
       
       // Build full thread text if it's a thread
-      let fullThreadText = data.tweet.text;
+      let fullThreadText = tweetText;
       if (data.tweet.thread && data.tweet.thread.length > 0) {
         const threadTexts = data.tweet.thread
           .filter(t => t.text)
           .map((t, i) => `[${i + 1}/${data.tweet.thread!.length}] ${t.text}`);
-        fullThreadText = [data.tweet.text, ...threadTexts].join('\n\n');
+        fullThreadText = [tweetText, ...threadTexts].join('\n\n');
       }
       
       return {
-        text: fullThreadText,
+        text: articleBody || fullThreadText,
         authorName: data.tweet.author?.name || '',
         authorHandle: data.tweet.author?.screen_name || '',
         tweetId,
@@ -281,7 +342,8 @@ async function fetchFullTweetViaFxTwitter(tweetUrl: string): Promise<{
         },
         media: data.tweet.media,
         thread: data.tweet.thread,
-        quotedTweet: data.tweet.quoted_tweet
+        quotedTweet: data.tweet.quoted_tweet,
+        rawTweet: data.tweet
       };
     }
     
@@ -530,6 +592,195 @@ function extractEntitiesFromTweet(tweetText: string): string[] {
   return [...new Set(entities)];
 }
 
+async function fetchXArticleBody(url: string): Promise<{
+  title: string | null;
+  body: string | null;
+  authorName: string | null;
+  authorHandle: string | null;
+  publishedAt: string | null;
+} | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+      }
+    });
+    
+    clearTimeout(timeout);
+    
+    if (!response.ok) return null;
+    
+    const html = await response.text();
+    const $ = load(html);
+
+    const title = safeText($('[data-testid="articleTitle"]').first().text()) ||
+      safeText($('meta[property="og:title"]').attr('content')) ||
+      safeText($('h1').first().text());
+
+    const body = safeText($('[data-testid="articleBody"]').first().text()) ||
+      safeText($('article').first().text()) ||
+      safeText($('[class*="article-body"]').first().text());
+
+    const authorName = safeText($('[data-testid="UserHandle"]').first().text()) ||
+      safeText($('[rel="author"]').first().text());
+
+    const authorHandle = safeText($('[data-testid="UserName"]').first().text()) || null;
+
+    const publishedAt = safeText($('time').first().attr('datetime')) || null;
+
+    return { title, body, authorName, authorHandle, publishedAt };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchRedditPost(url: string): Promise<RedditMetadata | null> {
+  try {
+    let apiUrl = url;
+    if (url.includes('reddit.com') && !url.endsWith('.json')) {
+      if (url.includes('/comments/')) {
+        apiUrl = url + '.json';
+      } else if (!url.includes('/r/')) {
+        return null;
+      } else {
+        apiUrl = url + '.json';
+      }
+    }
+
+    const data = await fetch(apiUrl, {
+      headers: { 'user-agent': 'Glean/1.0 (+https://glean.app)' }
+    });
+
+    if (!data.ok) return null;
+
+    const json = await data.json() as Array<{
+      data: {
+        children: Array<{
+          data: {
+            id: string;
+            subreddit: string;
+            author: string;
+            title: string;
+            selftext: string;
+            score: number;
+            permalink: string;
+            created_utc: number;
+            url: string;
+            is_self: boolean;
+          };
+        }>;
+      };
+    }>;
+
+    if (!json || json.length === 0) return null;
+
+    const post = json[0]?.data?.children?.[0]?.data;
+    if (!post) return null;
+
+    const topComments: RedditMetadata['topComments'] = [];
+    if (json[1]?.data?.children) {
+      for (const comment of json[1].data.children.slice(0, 10)) {
+        if (comment.data?.body) {
+          topComments.push({
+            authorName: comment.data.author || 'Unknown',
+            authorHandle: comment.data.author || '',
+            body: comment.data.body,
+            score: comment.data.score || 0
+          });
+        }
+      }
+    }
+
+    return {
+      postId: post.id,
+      subreddit: post.subreddit,
+      authorName: post.author || 'Unknown',
+      authorHandle: post.author || '',
+      postTitle: post.title,
+      postBody: post.selftext || null,
+      score: post.score,
+      permalink: `https://reddit.com${post.permalink}`,
+      createdAt: post.created_utc,
+      url: url,
+      isSelf: post.is_self,
+      topComments,
+      linkedUrl: !post.is_self ? post.url : undefined
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchGitHubRepo(owner: string, repo: string): Promise<GitHubMetadata | null> {
+  try {
+    const [repoData, readmeData] = await Promise.all([
+      fetchJson(`https://api.github.com/repos/${owner}/${repo}`),
+      fetchJson(`https://api.github.com/repos/${owner}/${repo}/readme`)
+    ]);
+
+    if (!repoData) return null;
+
+    let readme: string | null = null;
+    if (readmeData?.content) {
+      try {
+        readme = Buffer.from(readmeData.content, 'base64').toString('utf-8');
+      } catch {
+        readme = null;
+      }
+    }
+
+    return {
+      repoName: repoData.full_name,
+      description: repoData.description || null,
+      language: repoData.language || null,
+      stars: repoData.stargazers_count || 0,
+      forks: repoData.forks_count || 0,
+      topics: repoData.topics || [],
+      readme,
+      owner,
+      repo,
+      isArchived: repoData.archived || false,
+      isFork: repoData.fork || false,
+      license: repoData.license?.spdx_id || null,
+      defaultBranch: repoData.default_branch || 'main',
+      updatedAt: repoData.updated_at || ''
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWithArchiveFallback(url: string): Promise<string | null> {
+  const html = await fetchText(url);
+  if (html) return html;
+
+  try {
+    const archiveUrl = `https://archive.ph/newest/${url}`;
+    const archiveResponse = await fetch(archiveUrl, {
+      headers: { 'user-agent': 'Glean/1.0 (+https://glean.app)' }
+    });
+
+    if (archiveResponse.ok) {
+      const archiveHtml = await archiveResponse.text();
+      const $ = load(archiveHtml);
+      const snapshotUrl = $('a[data-testid="snapshot"]').first().attr('href');
+      if (snapshotUrl) {
+        const snapshot = await fetchText(snapshotUrl);
+        if (snapshot) return snapshot;
+      }
+    }
+  } catch {
+    // Silently fail
+  }
+
+  return null;
+}
+
 function fallbackMeta($: ReturnType<typeof load>, fallbackUrl: string, parts: ReturnType<typeof parseUrlParts>) {
   const title =
     safeText($('meta[property="og:title"]').attr('content')) ||
@@ -556,7 +807,6 @@ function fallbackMeta($: ReturnType<typeof load>, fallbackUrl: string, parts: Re
 }
 
 export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata> {
-  // Legacy fast-path for old note format
   if (url.startsWith('note:')) {
     return {
       title: 'Note',
@@ -581,7 +831,6 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
   if (parsed.isYouTube && parsed.isYoutubeWatch) {
     const payload = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
     
-    // Attempt to fetch transcript
     let transcriptText: string | null = null;
     try {
       const transcript = await YoutubeTranscript.fetchTranscript(url);
@@ -589,7 +838,7 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
         transcriptText = transcript.map((t: {text: string}) => t.text).join(' ').slice(0, 20000);
       }
     } catch {
-      // Transcript might be disabled or unavailable
+      // Transcript unavailable - degrade gracefully to title + description
     }
 
     if (payload) {
@@ -605,11 +854,10 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
     }
   }
 
-  // Fast-path bypass for synthetic note URLs to prevent network fetch timeouts
   if (parsed.hostname === 'note.local') {
     return {
       title: 'Note',
-      description: null, // Let ingest retain the existing description
+      description: null,
       content: null,
       ogImage: null,
       favicon: null,
@@ -621,22 +869,42 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
   if (parsed.isTwitter) {
     const normalizedUrl = normalizeTwitterUrl(url);
     
-    // Extract tweet ID for fallback methods
     const tweetIdMatch = normalizedUrl.match(/status\/(\d+)/);
     const tweetId = tweetIdMatch ? tweetIdMatch[1] : null;
     
-    // Try multiple sources to get full tweet text (in order of preference)
+    const fxtwitterResult = await fetchFullTweetViaFxTwitter(normalizedUrl);
+    
+    if (isFxTwitterArticle(fxtwitterResult)) {
+      const article = await fetchXArticleBody(normalizedUrl);
+      const articleTitle = (fxtwitterResult.rawTweet?.article as any)?.title || article?.title;
+      return {
+        title: articleTitle || fxtwitterResult?.text || 'X Article',
+        description: fxtwitterResult?.text?.slice(0, 500) || null,
+        content: fxtwitterResult?.text || null,
+        ogImage: fxtwitterResult?.media?.[0]?.thumbnail_url || null,
+        favicon: 'https://abs.twimg.com/favicons/twitter.ico',
+        domain: parsed.hostname,
+        sourceType: 'article',
+        sourceMetadata: {
+          authorName: fxtwitterResult?.authorName || 'Unknown',
+          authorHandle: fxtwitterResult?.authorHandle || '',
+          tweetId: tweetId || '',
+          publishedAt: (fxtwitterResult.rawTweet?.article as any)?.created_at || article?.publishedAt || '',
+          text: fxtwitterResult?.text || '',
+          links: [],
+          rawHtml: ''
+        }
+      };
+    }
+    
     let fullTweetText: string | null = null;
     let fullTweetAuthor: { name: string; handle: string } | null = null;
     
-    // 1. Try FxTwitter API first (best for full text, includes long tweets/notes)
-    const fxtwitterResult = await fetchFullTweetViaFxTwitter(normalizedUrl);
     if (fxtwitterResult?.text) {
       fullTweetText = fxtwitterResult.text;
       fullTweetAuthor = { name: fxtwitterResult.authorName, handle: fxtwitterResult.authorHandle };
     }
     
-    // 2. Fallback to Twitter's CDN syndication API
     if (!fullTweetText && tweetId) {
       const cdnResult = await fetchFullTweetViaCDN(tweetId);
       if (cdnResult?.text) {
@@ -674,23 +942,15 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
         };
       }
       
-      // Extract clean tweet metadata from oEmbed
       const tweetMeta = extractTweetMetadata(html, normalizedUrl);
-      
-      // Use the best available text source
       const tweetText = fullTweetText || tweetMeta?.text || '';
       const authorName = fullTweetAuthor?.name || tweetMeta?.authorName || safeText(payload.author_name) || 'Unknown';
       const authorHandle = fullTweetAuthor?.handle || tweetMeta?.authorHandle || '';
-      
-      // Create a meaningful title from the tweet text
       const title = tweetText ? createTweetTitle(tweetText) : safeText(payload.author_name) ?? 'Tweet';
-      
-      // Add extracted entities to the metadata
       const entities = tweetText ? extractEntitiesFromTweet(tweetText) : [];
       
       return {
         title,
-        // For tweets, keep full description since they're important content (not metadata)
         description: tweetText,
         content: tweetText,
         ogImage: safeText(payload.thumbnail_url),
@@ -714,7 +974,6 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
       };
     }
     
-    // If oEmbed fails but we have FxTwitter data, still return it
     if (fullTweetText) {
       return {
         title: createTweetTitle(fullTweetText),
@@ -742,7 +1001,51 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
     }
   }
 
+  if (parsed.isReddit) {
+    const redditData = await fetchRedditPost(url);
+    if (redditData) {
+      const combinedContent = [
+        redditData.postTitle,
+        redditData.postBody || '',
+        ...redditData.topComments.slice(0, 5).map(c => `${c.authorName}: ${c.body}`)
+      ].filter(Boolean).join('\n\n');
+
+      return {
+        title: redditData.postTitle,
+        description: redditData.postBody?.slice(0, 500) || null,
+        content: combinedContent,
+        ogImage: null,
+        favicon: 'https://www.reddit.com/favicon.ico',
+        domain: 'reddit.com',
+        sourceType: 'reddit',
+        sourceMetadata: redditData
+      };
+    }
+  }
+
   if (parsed.isGitHub) {
+    const ownerMatch = parsed.hostname.match(/github\.com\/([^\/]+)/);
+    const repoMatch = url.match(/github\.com\/[^\/]+\/([^\/\?#]+)/);
+    
+    if (ownerMatch && repoMatch) {
+      const owner = ownerMatch[1];
+      const repo = repoMatch[1];
+      const ghData = await fetchGitHubRepo(owner, repo);
+      
+      if (ghData) {
+        return {
+          title: ghData.repoName,
+          description: ghData.description,
+          content: ghData.readme || ghData.description,
+          ogImage: null,
+          favicon: 'https://github.githubassets.com/favicons/favicon.svg',
+          domain: 'github.com',
+          sourceType: 'github',
+          sourceMetadata: ghData
+        };
+      }
+    }
+
     const html = await fetchText(url);
     if (!html) {
       return {
@@ -769,7 +1072,7 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
     };
   }
 
-  const html = await fetchText(url);
+  const html = await fetchWithArchiveFallback(url);
   if (!html) {
     return {
       title: parsed.hostname,

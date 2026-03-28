@@ -26,7 +26,29 @@
       <!-- Reading Body -->
       <div class="reading-scroll-area">
         <div class="reading-container">
-          <div v-if="bookmark.ogImage" class="reading-hero-wrap">
+          <!-- YouTube Video Embed -->
+          <div v-if="youtubeVideoId" class="video-container">
+            <iframe
+              :src="`https://www.youtube.com/embed/${youtubeVideoId}`"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+              class="youtube-iframe"
+            />
+          </div>
+
+          <!-- Twitter/X Video Thumbnail with Play Button -->
+          <a v-else-if="twitterVideo" :href="bookmark.url" target="_blank" rel="noreferrer" class="video-thumbnail-link">
+            <img :src="twitterVideo.thumbnail" :alt="bookmark.title || ''" class="video-thumbnail-img" />
+            <div class="play-button">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </div>
+            <span v-if="twitterVideo.duration" class="video-duration">{{ formatDuration(twitterVideo.duration) }}</span>
+          </a>
+
+          <div v-else-if="bookmark.ogImage" class="reading-hero-wrap">
             <img :src="bookmark.ogImage" :alt="bookmark.title || ''" class="reading-hero-image" />
           </div>
           <span class="reading-domain">{{ bookmark.domain }}</span>
@@ -78,10 +100,17 @@
 <script setup lang="ts">
 import { useRoute } from '#app';
 
+type TwitterVideo = {
+  url: string;
+  thumbnail: string;
+  duration?: number;
+};
+
 type BookmarkDetail = {
   id: number; title: string | null; url: string; domain: string;
   description: string | null; content: string | null; isPinned?: boolean;
   ogImage?: string | null; summary?: string | null; sourceType?: string | null;
+  sourceMetadata?: Record<string, unknown>;
 };
 
 const route = useRoute();
@@ -93,6 +122,32 @@ const reprocessing = ref(false);
 const pinning = ref(false);
 const id = Number(route.params.id);
 
+const twitterVideo = computed<TwitterVideo | null>(() => {
+  if (!bookmark.value?.sourceMetadata) return null;
+  const meta = bookmark.value.sourceMetadata as any;
+  if (meta?.media?.videos?.length > 0) {
+    const video = meta.media.videos[0];
+    return {
+      url: video.url,
+      thumbnail: video.thumbnail_url || video.thumbnail,
+      duration: video.duration
+    };
+  }
+  return null;
+});
+
+const youtubeVideoId = computed<string | null>(() => {
+  if (!bookmark.value?.url) return null;
+  const url = bookmark.value.url;
+  // youtube.com/watch?v=ID
+  const ytMatch = url.match(/youtube\.com\/watch\?v=([^&]+)/);
+  if (ytMatch) return ytMatch[1];
+  // youtu.be/ID
+  const ytMatch2 = url.match(/youtu\.be\/([^?]+)/);
+  if (ytMatch2) return ytMatch2[1];
+  return null;
+});
+
 async function load() {
   loading.value = true;
   const response = await $fetch(`/api/bookmarks/${id}`);
@@ -101,7 +156,8 @@ async function load() {
   bookmark.value = { 
     id: p.id, title: p.title, url: p.url, domain: p.domain, description: p.description, 
     content: p.content, isPinned: p.is_pinned === 1, ogImage: p.ogImage, 
-    summary: p.summary, sourceType: p.source_type 
+    summary: p.summary, sourceType: p.source_type,
+    sourceMetadata: p.source_metadata ? JSON.parse(p.source_metadata) : null
   };
   tags.value = (p.tags || []).map((t: { id: number; name: string }) => ({ id: t.id, name: t.name }));
   loading.value = false;
@@ -123,6 +179,12 @@ async function addTag() {
 }
 async function removeTag(tagId: number) {
   await $fetch(`/api/bookmarks/${id}/tags/${tagId}`, { method: 'DELETE' }); await load();
+}
+
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 await load();
@@ -165,6 +227,68 @@ await load();
 
 .reading-hero-wrap { margin-bottom: 28px; }
 .reading-hero-image { width: 100%; border-radius: 20px; object-fit: cover; max-height: 400px; box-shadow: var(--shadow-md); }
+
+.video-container {
+  margin-bottom: 28px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: var(--shadow-md);
+}
+.youtube-iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: block;
+}
+
+.video-thumbnail-link {
+  display: block;
+  margin-bottom: 28px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+.video-thumbnail-img {
+  width: 100%;
+  max-height: 500px;
+  object-fit: cover;
+  display: block;
+}
+.play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 72px;
+  height: 72px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background var(--d-fast), transform var(--d-fast);
+}
+.play-button svg {
+  margin-left: 4px;
+}
+.video-thumbnail-link:hover .play-button {
+  background: rgba(29, 155, 240, 0.9);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+.video-duration {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
 
 .reading-domain { font-size: var(--text-sm); font-weight: 600; color: var(--color-accent); margin-bottom: 10px; display: block; }
 .reading-title { font-size: var(--text-4xl); font-weight: 700; line-height: 1.15; letter-spacing: -0.025em; margin-bottom: 20px; color: var(--text-primary); }

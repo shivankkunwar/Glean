@@ -33,6 +33,7 @@ function ensureSchemaExtensions(client: Database) {
   ensureColumn(client, 'bookmarks', 'embedding_version', 'TEXT');
   ensureColumn(client, 'bookmarks', 'classification_version', 'TEXT');
   ensureColumn(client, 'bookmarks', 'embed_model', 'TEXT');
+  ensureColumn(client, 'bookmarks', 'embed_hash', 'TEXT');
   ensureColumn(client, 'bookmarks', 'classify_model', 'TEXT');
   ensureColumn(client, 'bookmarks', 'summary_model', 'TEXT');
   ensureColumn(client, 'bookmarks', 'artifact_policy_version', 'TEXT');
