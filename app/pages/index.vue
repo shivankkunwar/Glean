@@ -76,8 +76,15 @@
     </nav>
 
     <!-- RESULTS INFO -->
-    <div class="results-info" :class="{ 'is-visible': searchQuery }">
-      Found <strong>{{ filteredCards.length }}</strong> results for "{{ searchQuery }}"
+    <div class="results-info" :class="{ 'is-visible': searchQuery || activeTag }">
+      <template v-if="searchQuery">
+        Found <strong>{{ filteredCards.length }}</strong> results for "{{ searchQuery }}"
+      </template>
+      <template v-else-if="activeTag">
+        Found <strong>{{ filteredCards.length }}</strong> results tagged with 
+        <NuxtLink to="/" class="active-tag">#{{ activeTag }}</NuxtLink>
+        <NuxtLink to="/" class="clear-filter">Clear</NuxtLink>
+      </template>
     </div>
 
     <!-- EMPTY STATE -->
@@ -203,10 +210,6 @@
               <span v-if="card.savedAt" class="dot" />
               <time v-if="card.savedAt" class="numeric">{{ relativeTime(card.savedAt) }}</time>
             </div>
-
-            <div v-if="card.tags?.length" class="card-tags">
-              <span v-for="tag in card.tags.slice(0, 3)" :key="tag.id" class="card-tag">{{ tag.name }}</span>
-            </div>
           </div>
         </article>
 
@@ -294,6 +297,7 @@ const categoryId = computed(() => {
   return null;
 });
 const searchQuery = computed(() => typeof route.query.q === 'string' ? route.query.q : '');
+const activeTag = computed(() => typeof route.query.tag === 'string' ? route.query.tag : '');
 
 const filters = [
   { label: 'All',      value: 'all',     icon: 'ph-squares-four' },
@@ -382,6 +386,9 @@ const filteredCards = computed(() => {
   let list = cards.value;
   if (activeFilter.value !== 'all') {
     list = list.filter(c => cardType(c) === activeFilter.value);
+  }
+  if (activeTag.value) {
+    list = list.filter(c => c.tags?.some(t => t.name === activeTag.value));
   }
   return list;
 });
@@ -561,11 +568,14 @@ async function fetchPage(pageNum: number) {
   return await $fetch('/api/bookmarks', { query: params }) as { items: BookmarkCard[]; total: number };
 }
 async function loadInitial() {
+  const scrollY = window.scrollY;
   loading.value = true; page.value = 1;
   const result = await fetchPage(1);
   cards.value = normalizeCards(result.items);
   total.value = result.total;
   loading.value = false;
+  await nextTick();
+  window.scrollTo(0, scrollY);
 }
 async function loadMore() {
   if (loadingMore.value || !hasMore.value) return;
@@ -631,6 +641,7 @@ onMounted(async () => {
   document.addEventListener('keydown', onKeyDown);
   refreshTimer = setInterval(() => {
     if (cards.value.some(isProcessing)) {
+      const scrollY = window.scrollY;
       fetchPage(1).then(result => {
         const ids = new Set(cards.value.filter(isProcessing).map(c => c.id));
         result.items.forEach(updated => {
@@ -639,6 +650,7 @@ onMounted(async () => {
             if (idx !== -1) cards.value[idx] = { ...cards.value[idx], ...updated };
           }
         });
+        nextTick(() => window.scrollTo(0, scrollY));
       });
     }
   }, 4000);
@@ -801,6 +813,17 @@ onBeforeUnmount(() => {
 .results-info { padding: 0 48px 24px; font-size: var(--text-sm); color: var(--text-secondary); display: none; }
 .results-info.is-visible { display: block; }
 .results-info strong { color: var(--text-primary); }
+.active-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--color-accent-bg); color: var(--color-accent);
+  padding: 2px 10px; border-radius: 6px;
+  font-weight: 500; margin: 0 4px;
+}
+.clear-filter {
+  margin-left: 12px; color: var(--text-muted);
+  font-size: var(--text-xs); text-decoration: underline;
+}
+.clear-filter:hover { color: var(--text-secondary); }
 
 .empty-state {
   display: flex; flex-direction: column; align-items: center;
@@ -825,6 +848,7 @@ onBeforeUnmount(() => {
   transition: transform var(--d-fast) var(--ease-quart), box-shadow var(--d-fast) var(--ease-quart);
   will-change: transform; opacity: 0;
   animation: card-enter var(--d-base) var(--ease-out) both;
+  user-select: none; -webkit-user-select: none;
 }
 @keyframes card-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }

@@ -59,10 +59,15 @@
               <a :href="bookmark.url" target="_blank" rel="noreferrer" class="source-link">View original →</a>
             </div>
             <div class="reading-tags">
-              <span v-for="tag in tags" :key="tag.id" class="reading-tag">
+              <NuxtLink 
+                v-for="tag in tags" 
+                :key="tag.id" 
+                :to="`/?tag=${encodeURIComponent(tag.name)}`"
+                class="reading-tag"
+              >
                 {{ tag.name }}
-                <button @click="removeTag(tag.id)" class="tag-del" title="Remove tag">×</button>
-              </span>
+                <button @click.prevent="removeTag(tag.id)" class="tag-del" title="Remove tag">×</button>
+              </NuxtLink>
               <form @submit.prevent="addTag" class="tag-add-form">
                 <input v-model="newTag" placeholder="+ add tag" class="tag-add-input" />
               </form>

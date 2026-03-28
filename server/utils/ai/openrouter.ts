@@ -29,31 +29,28 @@ function getEnv(key: string) {
 }
 
 function getOpenRouterModels() {
-  const defaultChain = [
-    'nvidia/nemotron-3-super-120b-a12b:free',
-    'openrouter/hunter-alpha',
-    'stepfun/step-3.5-flash:free',
-    'openrouter/free'
+  // PRIMARY: Groq - fast, reliable JSON mode, 14,400 RPD free
+  // SECONDARY: OpenRouter free models
+  const classifyModels = [
+    'groq:llama-3.3-70b-versatile',           // Primary - fastest, native JSON mode
+    'openrouter:meta-llama/llama-3.1-8b-instruct:free', // Secondary
+    'openrouter:stepfun/step-3.5-flash:free', // Tertiary - use minimal prompt
+    'openrouter:openrouter/free',             // Last resort
   ];
 
-  const parseChain = (key: string): string[] => {
-    const raw = getEnv(key);
-    if (!raw) {
-      return defaultChain;
-    }
-    const parsed = raw
-      .split(',')
-      .map((item: string) => item.trim())
-      .filter(Boolean);
-    return parsed.length ? parsed : defaultChain;
-  };
+  const summarizeModels = [
+    'groq:llama-3.3-70b-versatile',
+    'openrouter:meta-llama/llama-3.1-8b-instruct:free',
+    'openrouter:stepfun/step-3.5-flash:free',
+    'openrouter:openrouter/free',
+  ];
 
   return {
-    classify: getEnv('AI_OPENROUTER_CLASSIFY_MODEL') || defaultChain[0],
-    summarize: getEnv('AI_OPENROUTER_SUMMARY_MODEL') || defaultChain[0],
-    classifyChain: parseChain('AI_OPENROUTER_CLASSIFY_FALLBACKS'),
-    summarizeChain: parseChain('AI_OPENROUTER_SUMMARY_FALLBACKS'),
-    embed: getEnv('AI_OPENROUTER_EMBED_MODEL') || 'text-embedding-3-small'
+    classify: getEnv('AI_CLASSIFY_MODEL') || classifyModels[0],
+    summarize: getEnv('AI_SUMMARIZE_MODEL') || summarizeModels[0],
+    classifyChain: classifyModels,
+    summarizeChain: summarizeModels,
+    embed: getEnv('AI_OPENROUTER_EMBED_MODEL') || getEnv('AI_EMBED_MODEL') || 'text-embedding-3-small'
   };
 }
 
@@ -105,52 +102,105 @@ This is a long-form article published natively on X (formerly Twitter). Extract 
   return '';
 }
 
+const TECH_TERMS = [
+  "react", "vue", "angular", "svelte", "next.js", "typescript", "javascript", "node.js",
+  "python", "rust", "golang", "java", "kotlin", "swift", "rust", "c++", "c#",
+  "kubernetes", "docker", "k8s", "terraform", "ansible", "aws", "gcp", "azure",
+  "postgres", "postgresql", "mysql", "mongodb", "redis", "elasticsearch", "sqlite",
+  "graphql", "rest", "api", "grpc", "websocket", "oauth", "jwt", "authentication",
+  "llm", "gpt", "claude", "openai", "anthropic", "rag", "vector database", "embeddings",
+  "machine learning", "deep learning", "neural network", "transformer", "attention",
+  "cap theorem", "microservices", "monolith", "event sourcing", "cqrs", "saga",
+  "domain driven design", "ddd", "hexagonal architecture", "clean architecture",
+  "ci/cd", "github actions", "gitlab ci", "jenkins", "testing", "tdd",
+  "tailwind", "css", "html", "sass", "styled components",
+  "prisma", "drizzle", "typeorm", "prisma", "supabase", "planetscale",
+  "vercel", "netlify", "cloudflare", "edge computing", "serverless",
+  "blockchain", "web3", "solidity", "ethereum", "bitcoin", "crypto",
+  "security", "encryption", "ssl", "https", "cors", "xss", "csrf"
+];
+
+function buildMinimalPrompt(): string {
+  return `List 5 specific technical tags for this content.
+Output only: {"tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]}
+Be specific: prefer "react hooks" over "javascript", "rag pipeline" over "ai".
+No explanation. Only JSON.`;
+}
+
+function buildStandardPrompt(): string {
+  return `Extract 4-8 specific technical tags from the content below.
+
+Output ONLY this JSON, nothing else:
+{"tags": ["tag1", "tag2"]}
+
+Rules:
+- Specific terms only: "cap theorem" not "distributed systems"
+- Include: technologies, frameworks, protocols, named patterns
+- Exclude: generic words, platform names (github, twitter)
+
+Examples:
+"Building RAG with LangChain" → {"tags": ["rag", "langchain", "vector embeddings", "retrieval augmented generation"]}
+"React 18 concurrent features" → {"tags": ["react 18", "concurrent rendering", "suspense", "server components"]}`;
+}
+
 function buildClassifySystemPrompt(): string {
-  return `You classify saved web content for later retrieval.
+  return buildStandardPrompt();
+}
 
-Your job is to extract search-friendly metadata from the source text. Prefer precise, concrete terms that a user would realistically search for later.
+function buildClassifyUserPrompt(content: string): string {
+  const truncated = content.slice(0, 800);
+  return `<content>
+${truncated}
+</content>
 
-Priorities:
-1. Prefer explicit entities mentioned in the text: technologies, products, protocols, APIs, papers, standards, design patterns, companies, libraries, named concepts.
-2. Prefer specific technical concepts over broad labels.
-3. Preserve important multi-word terms exactly when possible.
-4. Use only information supported by the provided text.
-5. For social posts, focus on the actual content of the post, not embed markup, platform chrome, or engagement context.
+JSON tags:`;
+}
 
-Tag rules:
-- Output 4 to 8 tags when enough evidence exists.
-- Tags must be lowercase.
-- Tags must be concise noun phrases.
-- Avoid duplicates and near-duplicates.
-- Avoid generic tags unless they are clearly central and there are no better specifics.
-- Avoid filler tags like: interesting, article, post, thread, reading list, resource, notes, thoughts.
-- Do not include source/platform tags like twitter, youtube, github; the system adds those separately.
-- Prefer terms like "cap theorem" over broad terms like "distributed systems" when both are available.
+function parseTagResponse(raw: string): string[] {
+  // Attempt 1: clean JSON parse
+  try {
+    const parsed = JSON.parse(raw.trim());
+    if (Array.isArray(parsed?.tags) && parsed.tags.length >= 2) {
+      return parsed.tags.filter(Boolean).map((t: string) => t.toLowerCase().trim());
+    }
+  } catch {}
 
-Topics rules:
-- Topics are broader buckets than tags.
-- Output 1 to 4 topics.
-- Topics should still be specific enough to be useful for retrieval.
+  // Attempt 2: extract JSON object anywhere in response
+  const jsonMatch = raw.match(/\{[\s\S]*?"tags"[\s\S]*?\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (Array.isArray(parsed?.tags) && parsed.tags.length >= 2) {
+        return parsed.tags.filter(Boolean).map((t: string) => t.toLowerCase().trim());
+      }
+    } catch {}
+  }
 
-Key Entities rules:
-- Extract specific named things: libraries, frameworks, tools, APIs, papers, companies, protocols, products.
-- Extract version numbers if mentioned (e.g., "Node.js 20", "React 18").
-- Extract proper nouns and technical terms.
-- Output 3 to 10 entities when the text contains enough specificity.
-- Entities should be searchable exact matches: "LangChain", "pgvector", "GPT-4", "Docker".
+  // Attempt 3: extract array directly
+  const arrayMatch = raw.match(/\[([^\]]+)\]/);
+  if (arrayMatch) {
+    const tags = arrayMatch[1]
+      .split(",")
+      .map(s => s.replace(/['"]/g, "").trim().toLowerCase())
+      .filter(s => s.length > 1 && s.length < 50);
+    if (tags.length >= 2) return tags;
+  }
 
-Category rules:
-- Set categoryHint only when the category is obvious from the text.
-- Otherwise return null.
+  // Attempt 4: line-by-line extraction (some models output bullet points)
+  const lines = raw.split("\n")
+    .map(l => l.replace(/^[-*•]\s*/, "").replace(/['"]/g, "").trim().toLowerCase())
+    .filter(l => l.length > 2 && l.length < 60 && !l.includes("{") && !l.includes(":"));
+  
+  if (lines.length >= 2) return lines.slice(0, 8);
 
-Confidence scoring:
-- 0.9 to 1.0 = highly explicit, concrete evidence (specific technologies named)
-- 0.6 to 0.89 = mostly clear with mild ambiguity
-- 0.3 to 0.59 = partial evidence
-- below 0.3 = weak evidence
+  return [];
+}
 
-Return valid JSON only with exactly this structure:
-{"tags": string[], "topics": string[], "keyEntities": string[], "categoryHint": string|null, "confidence": number}`;
+function deriveTagsFromContent(content: string): string[] {
+  const lower = content.toLowerCase();
+  return TECH_TERMS
+    .filter(term => lower.includes(term.toLowerCase()))
+    .slice(0, 6);
 }
 
 function buildSummarizeSystemPrompt(): string {
@@ -235,61 +285,97 @@ export function createOpenRouterProvider(): AIProvider {
   const models = getOpenRouterModels();
 
   async function callChatCompletion(task: 'classify' | 'summarize', input: CanonicalDocument, modelOverride?: string) {
-    const systemPrompt = task === 'classify' 
-      ? buildClassifySystemPrompt() 
-      : buildSummarizeSystemPrompt();
-    
-    const userPrompt = buildUserPrompt(input);
-
     const candidates = modelOverride
       ? [modelOverride]
       : task === 'classify'
-        ? [models.classify, ...models.classifyChain.filter((item) => item !== models.classify)]
-        : [models.summarize, ...models.summarizeChain.filter((item) => item !== models.summarize)];
+        ? models.classifyChain
+        : models.summarizeChain;
 
     const errors: string[] = [];
+    const groqApiKey = getEnv('GROQ_API_KEY');
+    const openrouterApiKey = getEnv('AI_OPENROUTER_API_KEY') || getEnv('OPENROUTER_API_KEY');
 
-    for (const model of candidates) {
-      const body = {
-        model,
+    for (const modelSpec of candidates) {
+      // Parse model specification: "groq:model-name" or "openrouter:model-name"
+      const [provider, modelName] = modelSpec.includes(':') 
+        ? modelSpec.split(':') 
+        : ['openrouter', modelSpec];
+      
+      const isGroq = provider === 'groq';
+      const isWeakModel = modelName.includes('step') || modelName.includes('flash') || modelName.includes('instant') || modelSpec.includes('openrouter/free');
+      
+      const actualPrompt = task === 'classify' && isWeakModel 
+        ? buildMinimalPrompt() 
+        : (task === 'classify' ? buildClassifySystemPrompt() : buildSummarizeSystemPrompt());
+      
+      const userPrompt = task === 'classify'
+        ? buildClassifyUserPrompt(input.canonicalText)
+        : buildUserPrompt(input);
+
+      const baseUrl = isGroq 
+        ? 'https://api.groq.com/openai/v1' 
+        : 'https://openrouter.ai/api/v1';
+      
+      const apiKey = isGroq ? groqApiKey : openrouterApiKey;
+      
+      if (!apiKey) {
+        errors.push(`${modelSpec}: missing API key`);
+        continue;
+      }
+
+      const body: Record<string, unknown> = {
+        model: modelName,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: actualPrompt },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.2,
-        max_tokens: 500
+        max_tokens: task === 'classify' ? 150 : 500
       };
 
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        errors.push(`${model}: ${response.status}`);
-
-        if (response.status === 429 || response.status >= 500 || response.status === 404) {
-          continue;
-        }
-
-        throw new Error(`OpenRouter error (${response.status}) using ${model}: ${text || 'request failed'}`);
+      // Use native JSON mode for Groq (enforces valid JSON output)
+      if (isGroq && task === 'classify') {
+        body.response_format = { type: 'json_object' };
       }
 
-      const payload = (await response.json()) as {
-        model?: string;
-        choices?: Array<{ message?: { content?: string } }>;
-      };
+      try {
+        const response = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`
+          },
+          body: JSON.stringify(body)
+        });
 
-      const message = payload.choices?.[0]?.message?.content || '{}';
-      return { message: parseProviderJson(String(message)), model: payload.model || model };
+        if (!response.ok) {
+          const text = await response.text();
+          errors.push(`${modelSpec}: ${response.status}`);
+          
+          // 429 = rate limited, try next provider
+          if (response.status === 429) continue;
+          // 5xx = server error, try next
+          if (response.status >= 500) continue;
+          // 404 = model not found, try next
+          if (response.status === 404) continue;
+          
+          throw new Error(`API error (${response.status}) using ${modelSpec}: ${text || 'request failed'}`);
+        }
+
+        const payload = (await response.json()) as {
+          model?: string;
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+
+        const message = payload.choices?.[0]?.message?.content || '{}';
+        return { message: parseProviderJson(String(message)), model: payload.model || modelName };
+      } catch (err) {
+        errors.push(`${modelSpec}: ${err instanceof Error ? err.message : 'unknown error'}`);
+        continue;
+      }
     }
 
-    throw new Error(`OpenRouter all fallbacks failed for ${task}. Attempts: ${errors.join(', ')}`);
+    throw new Error(`All providers failed for ${task}. Attempts: ${errors.join(', ')}`);
   }
 
   async function callEmbeddings(texts: string[]): Promise<number[][]> {
@@ -349,26 +435,40 @@ export function createOpenRouterProvider(): AIProvider {
 
       try {
         const result = await callChatCompletion('classify', input);
-        const tags = Array.isArray(result.message.tags)
-          ? result.message.tags.map((tag) => String(tag).toLowerCase().trim()).filter(Boolean)
-          : [];
-        const topics = Array.isArray(result.message.topics)
-          ? result.message.topics.map((topic) => String(topic).toLowerCase().trim()).filter(Boolean)
-          : [];
-        const keyEntities = Array.isArray(result.message.keyEntities)
-          ? result.message.keyEntities.map((e: unknown) => String(e).trim()).filter(Boolean)
-          : [];
-        const categoryHint = result.message.categoryHint
-          ? String(result.message.categoryHint)
-          : undefined;
-        const confidence = Number(result.message.confidence ?? 0);
+        const rawContent = String(result.message?.tags ? JSON.stringify(result.message) : result.message?.content || '{}');
+        
+        // Try multiple parsing strategies
+        let tags = parseTagResponse(rawContent);
+        
+        // If parsing failed, try the tags field directly
+        if (tags.length < 2 && Array.isArray(result.message.tags)) {
+          tags = result.message.tags.map((tag: string) => String(tag).toLowerCase().trim()).filter(Boolean);
+        }
+        
+        // Last resort: derive from content using known tech terms
+        if (tags.length < 2) {
+          tags = deriveTagsFromContent(input.canonicalText);
+        }
+        
+        // Extract entities from tags
+        const keyEntities = tags
+          .filter(tag => {
+            const words = tag.split(' ');
+            return words.some(w => w.length > 2 && !['the', 'and', 'for', 'with', 'from'].includes(w));
+          })
+          .slice(0, 8);
+        
+        // Infer topics from tags
+        const topics = tags
+          .filter(tag => tag.includes(' ') && tag.length > 5)
+          .slice(0, 4);
 
         return {
           tags,
           topics,
           keyEntities,
-          categoryHint,
-          confidence: Number.isFinite(confidence) ? confidence : 0,
+          categoryHint: undefined,
+          confidence: tags.length > 0 ? 0.8 : 0,
           provider: 'openrouter',
           model: result.model,
           version: 'v1'
