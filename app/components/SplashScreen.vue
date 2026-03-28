@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 
 const emit = defineEmits<{ done: [] }>();
 
@@ -65,6 +65,7 @@ interface SplashCard {
 }
 
 const visible = ref(true);
+const splashReady = useSplash();
 
 const cardColors: Record<string, string> = {
   amber: '#C4820A',
@@ -74,7 +75,6 @@ const cardColors: Record<string, string> = {
   sand: '#8B7250'
 };
 
-// Initial fallback state matching the exact HTML mockup
 const displayCards = ref<SplashCard[]>([
   { title: 'The Architecture of Slowness', domain: 'aeon.co', savedAt: '2 days ago', palette: 'amber' },
   { title: 'How to Think in Permanent Notes', domain: 'zettelkasten.de', savedAt: 'last week', palette: 'sage' },
@@ -83,14 +83,20 @@ const displayCards = ref<SplashCard[]>([
   { title: 'On the Art of Paying Attention', domain: 'psyche.co', savedAt: '5 days ago', palette: 'sand' }
 ]);
 
+let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
 function dismiss() {
   if (!visible.value) return;
+  if (timeoutId) clearTimeout(timeoutId);
   visible.value = false;
 }
 
+watch(splashReady, (ready) => {
+  if (ready) dismiss();
+});
+
 onMounted(() => {
-  // Auto-dismiss after 4.8s
-  setTimeout(dismiss, 4800);
+  timeoutId = setTimeout(dismiss, 6000);
 });
 </script>
 

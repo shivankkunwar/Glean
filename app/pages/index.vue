@@ -261,6 +261,7 @@ type OptNote = { id: number; text: string };
 
 const route = useRoute();
 const isAuthenticated = useState<boolean>('isAuthenticated', () => false);
+const splashReady = useSplash();
 
 // ── State ─────────────────────────────────────────────────────────────
 const cards = ref<BookmarkCard[]>([]);
@@ -624,6 +625,7 @@ watch(() => route.fullPath, () => { void loadInitial(); });
 
 onMounted(async () => {
   await loadInitial();
+  splashReady.value = true;
   setupObserver();
   window.addEventListener('scroll', onScroll, { passive: true });
   document.addEventListener('keydown', onKeyDown);
