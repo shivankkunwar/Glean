@@ -13,6 +13,7 @@ type Row = {
   favicon: string | null;
   domain: string | null;
   source_type: string | null;
+  source_metadata: string | null;
   status: string;
   ai_status: string | null;
   summary: string | null;
@@ -44,6 +45,7 @@ export default defineEventHandler((event) => {
       b.favicon,
       b.domain,
       b.source_type,
+      b.source_metadata,
       b.status,
       b.ai_status,
       b.summary,
@@ -102,6 +104,7 @@ export default defineEventHandler((event) => {
     favicon: row.favicon,
     domain: row.domain,
     sourceType: row.source_type,
+    sourceMetadata: row.source_metadata,
     status: row.status,
     aiStatus: row.ai_status,
     summary: row.summary,

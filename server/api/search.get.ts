@@ -75,6 +75,7 @@ async function performSemanticSearch(q: string, categoryId: number | null, limit
           b.status,
           b.ai_status,
           b.source_type,
+          b.source_metadata,
           b.created_at
          FROM bookmarks b
          WHERE b.id = ?`
@@ -95,6 +96,7 @@ async function performSemanticSearch(q: string, categoryId: number | null, limit
       status: String(row.status),
       aiStatus: row.ai_status ? String(row.ai_status) : null,
       sourceType: row.source_type ? String(row.source_type) : null,
+      sourceMetadata: row.source_metadata ? String(row.source_metadata) : null,
       createdAt: String(row.created_at),
       score: result.score,
       tags: []
@@ -129,7 +131,7 @@ async function performHybridSearch(q: string, categoryId: number | null, limit: 
   const fused = reciprocalRankFusion(ftsRanks, vecScores, 60);
   const paginated = fused.slice(offset, offset + limit);
 
-  const items = paginated.map((result) => {
+const items = paginated.map((result) => {
     const row = client
       .prepare(
         `SELECT
@@ -144,6 +146,7 @@ async function performHybridSearch(q: string, categoryId: number | null, limit: 
           b.status,
           b.ai_status,
           b.source_type,
+          b.source_metadata,
           b.created_at
          FROM bookmarks b
          WHERE b.id = ?`
@@ -164,6 +167,7 @@ async function performHybridSearch(q: string, categoryId: number | null, limit: 
       status: String(row.status),
       aiStatus: row.ai_status ? String(row.ai_status) : null,
       sourceType: row.source_type ? String(row.source_type) : null,
+      sourceMetadata: row.source_metadata ? String(row.source_metadata) : null,
       createdAt: String(row.created_at),
       score: result.score,
       tags: []

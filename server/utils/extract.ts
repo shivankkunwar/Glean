@@ -877,11 +877,12 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
     if (isFxTwitterArticle(fxtwitterResult)) {
       const article = await fetchXArticleBody(normalizedUrl);
       const articleTitle = (fxtwitterResult.rawTweet?.article as any)?.title || article?.title;
+      const articleCoverImage = (fxtwitterResult.rawTweet?.article as any)?.cover_media?.media_info?.original_img_url || null;
       return {
         title: articleTitle || fxtwitterResult?.text || 'X Article',
         description: fxtwitterResult?.text?.slice(0, 500) || null,
         content: fxtwitterResult?.text || null,
-        ogImage: fxtwitterResult?.media?.[0]?.thumbnail_url || null,
+        ogImage: articleCoverImage,
         favicon: 'https://abs.twimg.com/favicons/twitter.ico',
         domain: parsed.hostname,
         sourceType: 'article',

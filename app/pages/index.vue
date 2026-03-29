@@ -133,7 +133,7 @@
 
           <template v-if="cardType(card) !== 'note'">
             <div class="card-image" v-if="cardType(card) !== 'book'">
-              <img v-if="card.ogImage" :src="card.ogImage" :alt="card.title || ''" loading="lazy" />
+              <img v-if="card.ogImage || getTweetMediaImage(card)" :src="card.ogImage || getTweetMediaImage(card)!" :alt="card.title || ''" loading="lazy" />
               <div v-else class="card-gradient" :style="{ background: cardGradient(card) }" />
               <!-- Video play overlay -->
               <template v-if="cardType(card) === 'video'">
@@ -257,7 +257,7 @@ type BookmarkCard = {
   id: number; url: string; title: string | null; description: string | null;
   ogImage: string | null; status: string; domain: string | null;
   aiStatus?: string | null; sourceType?: string | null; isPinned?: boolean;
-  summary?: string | null;
+  summary?: string | null; sourceMetadata?: string | null;
   tags: Tag[]; savedAt?: string; duration?: string | null; price?: string | null;
 };
 type OptNote = { id: number; text: string };
@@ -281,6 +281,7 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let observer: IntersectionObserver | null = null;
 
 const inputVal = ref('');
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 const inputMode = ref<'idle' | 'url' | 'search'>('idle');
 const isFocused = ref(false);
 const urlPreview = ref<{ domain: string; path: string } | null>(null);
@@ -375,6 +376,16 @@ function processingStatusText(b: BookmarkCard): string {
   return 'Fetching page content and generating tags…';
 }
 
+function getTweetMediaImage(b: BookmarkCard): string | null {
+  if (cardType(b) !== 'tweet' || !b.sourceMetadata) return null;
+  try {
+    const meta = JSON.parse(b.sourceMetadata) as { media?: { photos?: Array<{ url: string }>; videos?: Array<{ thumbnail_url?: string; thumbnail?: string }> } };
+    if (meta.media?.photos?.length) return meta.media.photos[0].url;
+    if (meta.media?.videos?.length) return meta.media.videos[0].thumbnail_url || meta.media.videos[0].thumbnail || null;
+    return null;
+  } catch { return null; }
+}
+
 const inputIconClass = computed(() => {
   if (inputMode.value === 'url') return 'ph-link';
   if (inputMode.value === 'search') return 'ph-magnifying-glass';
@@ -407,6 +418,7 @@ function parseUrl(raw: string): { domain: string; path: string } | null {
 
 function onInputChange() {
   const val = inputVal.value;
+  if (searchDebounce) { clearTimeout(searchDebounce); searchDebounce = null; }
   if (!val) { inputMode.value = 'idle'; urlPreview.value = null; updateRouteSearch(''); return; }
   if (isUrl(val)) {
     inputMode.value = 'url';
@@ -414,7 +426,7 @@ function onInputChange() {
   } else {
     inputMode.value = 'search';
     urlPreview.value = null;
-    updateRouteSearch(val);
+    searchDebounce = setTimeout(() => updateRouteSearch(val), 150);
   }
 }
 
@@ -659,6 +671,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (refreshTimer) clearInterval(refreshTimer);
   if (observer) observer.disconnect();
+  if (searchDebounce) clearTimeout(searchDebounce);
   window.removeEventListener('scroll', onScroll);
   document.removeEventListener('keydown', onKeyDown);
 });

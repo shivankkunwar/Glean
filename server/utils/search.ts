@@ -16,6 +16,8 @@ type SearchResult = {
   favicon: string | null;
   domain: string | null;
   status: string;
+  sourceType: string | null;
+  sourceMetadata: string | null;
   createdAt: string;
   score: number;
   snippet: string | null;
@@ -32,6 +34,8 @@ function mapRows(rows: Array<Record<string, unknown>>, scoreKey: 'rank' | 'score
     favicon: row.favicon ? String(row.favicon) : null,
     domain: row.domain ? String(row.domain) : null,
     status: String(row.status),
+    sourceType: row.source_type ? String(row.source_type) : null,
+    sourceMetadata: row.source_metadata ? String(row.source_metadata) : null,
     createdAt: String(row.created_at),
     score: Number(row[scoreKey] ?? 0),
     snippet: row.snippet ? String(row.snippet) : null,
@@ -143,6 +147,8 @@ function trySearchStrategies(
             b.favicon,
             b.domain,
             b.status,
+            b.source_type,
+            b.source_metadata,
             b.created_at,
             bm25(bookmarks_fts) AS rank
            FROM bookmarks_fts
@@ -175,6 +181,8 @@ function trySearchStrategies(
             b.favicon,
             b.domain,
             b.status,
+            b.source_type,
+            b.source_metadata,
             b.created_at,
             bm25(bookmarks_fts) AS rank
            FROM bookmarks_fts
@@ -207,6 +215,8 @@ function trySearchStrategies(
             b.favicon,
             b.domain,
             b.status,
+            b.source_type,
+            b.source_metadata,
             b.created_at,
             bm25(bookmarks_fts) AS rank
            FROM bookmarks_fts
@@ -261,6 +271,8 @@ function trySearchStrategies(
         b.favicon,
         b.domain,
         b.status,
+        b.source_type,
+        b.source_metadata,
         b.created_at,
         CASE
           WHEN lower(COALESCE(b.source_metadata, '')) LIKE @likeQuery THEN 0.25
