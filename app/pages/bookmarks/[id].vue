@@ -14,10 +14,10 @@
           <a :href="bookmark.url" target="_blank" rel="noreferrer" class="reading-action-btn" title="Open source">
             <i class="ph ph-arrow-square-out" />
           </a>
-          <button class="reading-action-btn" @click="reprocess" :disabled="reprocessing" title="Reprocess with AI">
+          <button v-if="isAuthenticated" class="reading-action-btn" @click="reprocess" :disabled="reprocessing" title="Reprocess with AI">
             <i class="ph ph-arrows-clockwise" :class="{ spin: reprocessing }" />
           </button>
-          <button class="reading-action-btn" @click="togglePin" :disabled="pinning" :title="bookmark.isPinned ? 'Unpin' : 'Pin'">
+          <button v-if="isAuthenticated" class="reading-action-btn" @click="togglePin" :disabled="pinning" :title="bookmark.isPinned ? 'Unpin' : 'Pin'">
             <i :class="['ph', bookmark.isPinned ? 'ph-fill ph-push-pin' : 'ph-push-pin']" />
           </button>
         </div>
@@ -66,9 +66,9 @@
                 class="reading-tag"
               >
                 {{ tag.name }}
-                <button @click.prevent="removeTag(tag.id)" class="tag-del" title="Remove tag">×</button>
+                <button v-if="isAuthenticated" @click.prevent="removeTag(tag.id)" class="tag-del" title="Remove tag">×</button>
               </NuxtLink>
-              <form @submit.prevent="addTag" class="tag-add-form">
+              <form v-if="isAuthenticated" @submit.prevent="addTag" class="tag-add-form">
                 <input v-model="newTag" placeholder="+ add tag" class="tag-add-input" />
               </form>
             </div>
@@ -125,6 +125,7 @@ const newTag = ref('');
 const loading = ref(false);
 const reprocessing = ref(false);
 const pinning = ref(false);
+const isAuthenticated = useState<boolean>('isAuthenticated', () => false);
 const id = Number(route.params.id);
 
 const twitterVideo = computed<TwitterVideo | null>(() => {
