@@ -103,120 +103,114 @@
 
     <!-- MASONRY GRID -->
     <div class="container">
-      <div v-if="loading && cards.length === 0" class="masonry-grid">
-        <div v-for="n in 8" :key="n" class="card card-skeleton" />
+      <div v-if="loading && cards.length === 0" class="masonry-grid" :class="`cols-${columnCountRef}`">
+        <div v-for="n in columnCountRef" :key="n" class="masonry-column">
+          <div v-for="i in Math.ceil(8 / columnCountRef)" :key="i" class="card card-skeleton" />
+        </div>
       </div>
-      <div v-else class="masonry-grid">
-        <!-- Optimistic note cards (from tray) -->
-        <article
-          v-for="note in optimisticNotes"
-          :key="'opt-' + note.id"
-          class="card card--note"
-          data-type="note"
-        >
-          <div class="card-body note-body">
-            <i class="ph ph-text-aa note-icon" />
-            <h3 class="card-title">{{ note.text }}</h3>
-            <div class="card-meta"><span>Quick thought</span><span class="dot" /><time class="numeric">just now</time></div>
-          </div>
-        </article>
+      <div v-else class="masonry-grid" :class="`cols-${columnCountRef}`">
+        <div v-for="colIndex in columnCountRef" :key="colIndex" class="masonry-column">
+          <template v-if="colIndex === 1">
+            <article
+              v-for="note in optimisticNotes"
+              :key="'opt-' + note.id"
+              class="card card--note"
+              data-type="note"
+            >
+              <div class="card-body note-body">
+                <i class="ph ph-text-aa note-icon" />
+                <h3 class="card-title">{{ note.text }}</h3>
+                <div class="card-meta"><span>Quick thought</span><span class="dot" /><time class="numeric">just now</time></div>
+              </div>
+            </article>
+          </template>
+          
+          <article
+            v-for="(card, localIdx) in getColumnCards(colIndex -1)"
+            :key="card.id"
+            :class="cardClasses(card)"
+            :data-type="cardType(card)"
+            :style="{ animationDelay: `${Math.min(localIdx * 30, 240)}ms` }"
+            @click.stop="navigateTo('/bookmarks/' + card.id)"
+          >
+            <template v-if="cardType(card) !== 'note'">
+              <div class="card-image" v-if="cardType(card) !== 'book'">
+                <img v-if="card.ogImage || getTweetMediaImage(card)" :src="card.ogImage || getTweetMediaImage(card)!" :alt="card.title || ''" loading="lazy" />
+                <div v-else class="card-gradient" :style="{ background: cardGradient(card) }" />
+                <template v-if="cardType(card) === 'video'">
+                  <div class="play-btn"><i class="ph-fill ph-play" /></div>
+                  <span v-if="card.duration" class="duration-badge numeric">{{ card.duration }}</span>
+                </template>
+                <div v-if="cardType(card) === 'tweet'" class="tweet-badge">
+                  <i class="ph-fill ph-x-logo" />
+                </div>
+                <div v-if="cardType(card) === 'github'" class="gh-badge">
+                  <i class="ph-fill ph-github-logo" />
+                </div>
+                <div class="card-actions">
+                  <button v-if="isAuthenticated" class="card-action" @click.stop="reprocessCard(card)" aria-label="Reprocess with AI">
+                    <i class="ph ph-arrows-clockwise" :class="{ spin: reprocessing }" />
+                  </button>
+                  <button v-if="isAuthenticated" class="card-action" :aria-label="card.isPinned ? 'Unpin' : 'Pin'" @click.stop="togglePin(card)">
+                    <i :class="['ph', card.isPinned ? 'ph-fill ph-push-pin' : 'ph-push-pin']" />
+                  </button>
+                  <button v-if="isAuthenticated" class="card-action" aria-label="Delete" @click.stop="remove(card.id)">
+                    <i class="ph ph-trash" />
+                  </button>
+                </div>
+              </div>
+              <div v-if="cardType(card) === 'book'" class="book-cover" :style="{ background: cardGradient(card) }">
+                <div class="book-3d">
+                  <img v-if="card.ogImage" :src="card.ogImage" :alt="card.title || ''" loading="lazy" />
+                  <div v-else class="book-placeholder"><i class="ph ph-book-open" /></div>
+                  <div class="book-spine" />
+                </div>
+              </div>
+            </template>
 
-        <article
-          v-for="(card, index) in filteredCards"
-          :key="card.id"
-          :class="cardClasses(card)"
-          :data-type="cardType(card)"
-          :style="{ animationDelay: `${Math.min(index * 30, 240)}ms` }"
-          @click.stop="navigateTo('/bookmarks/' + card.id)"
-        >
-          <!-- IMAGE / GRADIENT header for link cards -->
-
-          <template v-if="cardType(card) !== 'note'">
-            <div class="card-image" v-if="cardType(card) !== 'book'">
-              <img v-if="card.ogImage || getTweetMediaImage(card)" :src="card.ogImage || getTweetMediaImage(card)!" :alt="card.title || ''" loading="lazy" />
-              <div v-else class="card-gradient" :style="{ background: cardGradient(card) }" />
-              <!-- Video play overlay -->
-              <template v-if="cardType(card) === 'video'">
-                <div class="play-btn"><i class="ph-fill ph-play" /></div>
-                <span v-if="card.duration" class="duration-badge numeric">{{ card.duration }}</span>
+            <div class="card-body" :class="{ 'note-body': cardType(card) === 'note' }">
+              <template v-if="isProcessing(card)">
+                <div class="processing-pill"><span class="processing-dot" />Processing</div>
               </template>
-              <!-- Twitter badge -->
-              <div v-if="cardType(card) === 'tweet'" class="tweet-badge">
-                <i class="ph-fill ph-x-logo" />
+
+              <div v-if="card.isPinned" class="pin-badge" title="Pinned">
+                <i class="ph-fill ph-push-pin" />
               </div>
-              <!-- GitHub badge -->
-              <div v-if="cardType(card) === 'github'" class="gh-badge">
-                <i class="ph-fill ph-github-logo" />
-              </div>
-              <div class="card-actions">
-                <button v-if="isAuthenticated" class="card-action" @click.stop="reprocessCard(card)" aria-label="Reprocess with AI">
+
+              <div v-if="cardType(card) === 'note' && isAuthenticated" class="note-card-actions">
+                <button class="card-action" @click.stop="reprocessCard(card)" aria-label="Reprocess with AI">
                   <i class="ph ph-arrows-clockwise" :class="{ spin: reprocessing }" />
                 </button>
-                <button v-if="isAuthenticated" class="card-action" :aria-label="card.isPinned ? 'Unpin' : 'Pin'" @click.stop="togglePin(card)">
+                <button class="card-action" :aria-label="card.isPinned ? 'Unpin' : 'Pin'" @click.stop="togglePin(card)">
                   <i :class="['ph', card.isPinned ? 'ph-fill ph-push-pin' : 'ph-push-pin']" />
                 </button>
-                <button v-if="isAuthenticated" class="card-action" aria-label="Delete" @click.stop="remove(card.id)">
+                <button class="card-action" aria-label="Delete" @click.stop="remove(card.id)">
                   <i class="ph ph-trash" />
                 </button>
               </div>
-            </div>
-            <!-- Book cover -->
-            <div v-if="cardType(card) === 'book'" class="book-cover" :style="{ background: cardGradient(card) }">
-              <div class="book-3d">
-                <img v-if="card.ogImage" :src="card.ogImage" :alt="card.title || ''" loading="lazy" />
-                <div v-else class="book-placeholder"><i class="ph ph-book-open" /></div>
-                <div class="book-spine" />
+              <i v-if="cardType(card) === 'note'" class="ph ph-text-aa note-icon" />
+
+              <template v-if="cardType(card) === 'product'">
+                <span class="product-category">{{ productCategory(card) }}</span>
+                <div v-if="card.price" class="product-price numeric">{{ card.price }}</div>
+              </template>
+
+              <h3 class="card-title">{{ cardType(card) === 'note' ? (cardDescription(card) || cardTitle(card)) : cardTitle(card) }}</h3>
+
+              <p v-if="cardDescription(card) && cardType(card) !== 'note'" class="card-excerpt">{{ cardDescription(card) }}</p>
+              <p v-if="isProcessing(card)" class="processing-status">{{ processingStatusText(card) }}</p>
+
+              <div class="card-meta">
+                <span>{{ cardDomain(card) }}</span>
+                <span v-if="card.savedAt" class="dot" />
+                <time v-if="card.savedAt" class="numeric">{{ relativeTime(card.savedAt) }}</time>
               </div>
             </div>
-          </template>
-
-            <div class="card-body" :class="{ 'note-body': cardType(card) === 'note' }">
-            <template v-if="isProcessing(card)">
-              <div class="processing-pill"><span class="processing-dot" />Processing</div>
-            </template>
-
-            <!-- Pin indicator badge -->
-            <div v-if="card.isPinned" class="pin-badge" title="Pinned">
-              <i class="ph-fill ph-push-pin" />
-            </div>
-
-            <!-- Note actions (no image section for notes) -->
-            <div v-if="cardType(card) === 'note' && isAuthenticated" class="note-card-actions">
-              <button class="card-action" @click.stop="reprocessCard(card)" aria-label="Reprocess with AI">
-                <i class="ph ph-arrows-clockwise" :class="{ spin: reprocessing }" />
-              </button>
-              <button class="card-action" :aria-label="card.isPinned ? 'Unpin' : 'Pin'" @click.stop="togglePin(card)">
-                <i :class="['ph', card.isPinned ? 'ph-fill ph-push-pin' : 'ph-push-pin']" />
-              </button>
-              <button class="card-action" aria-label="Delete" @click.stop="remove(card.id)">
-                <i class="ph ph-trash" />
-              </button>
-            </div>
-            <i v-if="cardType(card) === 'note'" class="ph ph-text-aa note-icon" />
-
-            <!-- Product price + category -->
-            <template v-if="cardType(card) === 'product'">
-              <span class="product-category">{{ productCategory(card) }}</span>
-              <div v-if="card.price" class="product-price numeric">{{ card.price }}</div>
-            </template>
-
-            <h3 class="card-title">{{ cardType(card) === 'note' ? (cardDescription(card) || cardTitle(card)) : cardTitle(card) }}</h3>
-
-            <p v-if="cardDescription(card) && cardType(card) !== 'note'" class="card-excerpt">{{ cardDescription(card) }}</p>
-            <p v-if="isProcessing(card)" class="processing-status">{{ processingStatusText(card) }}</p>
-
-            <div class="card-meta">
-              <span>{{ cardDomain(card) }}</span>
-              <span v-if="card.savedAt" class="dot" />
-              <time v-if="card.savedAt" class="numeric">{{ relativeTime(card.savedAt) }}</time>
-            </div>
-          </div>
-        </article>
-
-        <!-- Infinite scroll sentinel -->
-        <div ref="sentinel" class="sentinel" />
+          </article>
+        </div>
       </div>
 
+      <div ref="sentinel" class="sentinel" />
       <p v-if="!hasMore && cards.length > 0 && !loading" class="end-of-list">You've seen everything ✓</p>
       <p v-if="loadingMore" class="loading-more"><i class="ph ph-spinner-gap spin" /> Loading more…</p>
     </div>
@@ -406,6 +400,33 @@ const filteredCards = computed(() => {
 
 function setFilter(val: string) { activeFilter.value = val; }
 
+// ── Stable column assignment for masonry grid ─────────────────────────
+const columnCount = computed(() => {
+  if (typeof window === 'undefined') return 4;
+  const width = window.innerWidth;
+  if (width <= 767) return 2;
+  if (width <= 900) return 2;
+  if (width <= 1200) return 3;
+  return 4;
+});
+
+const columnCountRef = ref(4);
+
+function getColumnCards(colIndex: number): BookmarkCard[] {
+  const total = columnCountRef.value;
+  return filteredCards.value.filter((_, idx) => idx % total === colIndex);
+}
+
+function updateColumnCount() {
+  if (typeof window === 'undefined') return;
+  const width = window.innerWidth;
+  let cols = 4;
+  if (width <= 767) cols = 2;
+  else if (width <= 900) cols = 2;
+  else if (width <= 1200) cols = 3;
+  columnCountRef.value = cols;
+}
+
 // ── URL detection ─────────────────────────────────────────────────────
 const URL_REGEX = /^https?:\/\/.+\..+/i;
 function isUrl(v: string): boolean { return URL_REGEX.test(v.trim()); }
@@ -431,10 +452,10 @@ function onInputChange() {
 }
 
 function updateRouteSearch(q: string) {
-  if (q.trim()) navigateTo({ path: '/', query: { ...route.query, q } });
+  if (q.trim()) navigateTo({ path: '/', query: { ...route.query, q }, replace: true });
   else {
     const { q: _q, ...rest } = route.query as Record<string, string>;
-    navigateTo({ path: '/', query: rest });
+    navigateTo({ path: '/', query: rest, replace: true });
   }
 }
 
@@ -651,6 +672,8 @@ onMounted(async () => {
   setupObserver();
   window.addEventListener('scroll', onScroll, { passive: true });
   document.addEventListener('keydown', onKeyDown);
+  window.addEventListener('resize', updateColumnCount);
+  updateColumnCount();
   refreshTimer = setInterval(() => {
     if (cards.value.some(isProcessing)) {
       const scrollY = window.scrollY;
@@ -673,6 +696,7 @@ onBeforeUnmount(() => {
   if (observer) observer.disconnect();
   if (searchDebounce) clearTimeout(searchDebounce);
   window.removeEventListener('scroll', onScroll);
+  window.removeEventListener('resize', updateColumnCount);
   document.removeEventListener('keydown', onKeyDown);
 });
 </script>
@@ -850,11 +874,15 @@ onBeforeUnmount(() => {
 
 /* ── Grid ────────────────────────────────────────────────────────── */
 .container { max-width: 1440px; margin: 0 auto; padding: 0 48px; }
-.masonry-grid { column-count: 4; column-gap: 32px; }
+.masonry-grid { display: flex; gap: 32px; }
+.masonry-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.masonry-grid.cols-4 { gap: 24px; }
+.masonry-grid.cols-3 { gap: 24px; }
+.masonry-grid.cols-2 { gap: 12px; }
+.masonry-grid.cols-2 .masonry-column { gap: 12px; }
 
 /* ── Card Base ───────────────────────────────────────────────────── */
 .card {
-  break-inside: avoid; margin-bottom: 24px;
   background: var(--bg-surface); border-radius: 16px;
   border: 1px solid var(--border-subtle); overflow: hidden;
   position: relative; cursor: pointer;
@@ -1094,8 +1122,14 @@ onBeforeUnmount(() => {
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
 /* ── Responsive ──────────────────────────────────────────────────── */
-@media (max-width: 1200px) { .masonry-grid { column-count: 3; column-gap: 24px; } }
-@media (max-width: 900px)  { .masonry-grid { column-count: 2; column-gap: 16px; } }
+@media (max-width: 1200px) {
+  .masonry-grid { gap: 24px; }
+  .masonry-column { gap: 20px; }
+}
+@media (max-width: 900px) {
+  .masonry-grid { gap: 16px; }
+  .masonry-column { gap: 16px; }
+}
 
 @media (max-width: 767px) {
   /* Hero */
@@ -1107,9 +1141,10 @@ onBeforeUnmount(() => {
   .filter-section { padding: 0 16px 20px; justify-content: flex-start; }
   .filter-pills { max-width: 100%; }
 
-  /* Grid — Pinterest feel: 2 cols always on mobile */
-  .masonry-grid { column-count: 2; column-gap: 12px; }
-  .card { margin-bottom: 12px; border-radius: 14px; }
+  /* Grid — stable 2-col layout */
+  .masonry-grid { gap: 12px; }
+  .masonry-column { gap: 12px; }
+  .card { border-radius: 14px; }
   .card-body { padding: 12px; }
   .card-title { font-size: var(--text-sm); }
   .card-gradient { height: 120px; }
@@ -1133,9 +1168,9 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 400px) {
-  /* Very small phones: still 2-col but even tighter */
-  .masonry-grid { column-gap: 8px; }
-  .card { margin-bottom: 8px; }
+  /* Very small phones: tighter gaps */
+  .masonry-grid { gap: 8px; }
+  .masonry-column { gap: 8px; }
 }
 
 
