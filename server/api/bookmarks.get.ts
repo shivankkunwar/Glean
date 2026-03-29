@@ -61,7 +61,6 @@ export default defineEventHandler((event) => {
   `;
 
   const pinnedOnly = query.pinned === 'true';
-  const showPinned = query.showPinned === 'true';
 
   let filter = categoryId ? ' WHERE b.category_id = @categoryId ' : '';
   if (pinnedOnly) {
@@ -69,7 +68,7 @@ export default defineEventHandler((event) => {
   }
 
   const rows = client
-    .prepare(`${baseSelect}${filter} ORDER BY ${showPinned ? 'b.is_pinned DESC, ' : ''} b.created_at DESC LIMIT @limit OFFSET @offset`)
+    .prepare(`${baseSelect}${filter} ORDER BY b.is_pinned DESC, b.created_at DESC LIMIT @limit OFFSET @offset`)
     .all({ categoryId, limit, offset }) as Row[];
 
   const totalRow =
