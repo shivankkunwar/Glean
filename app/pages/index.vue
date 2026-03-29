@@ -103,9 +103,9 @@
 
     <!-- MASONRY GRID -->
     <div class="container">
-      <div v-if="loading && cards.length === 0" class="masonry-grid" :class="`cols-${columnCountRef}`">
-        <div v-for="n in columnCountRef" :key="n" class="masonry-column">
-          <div v-for="i in Math.ceil(8 / columnCountRef)" :key="i" class="card card-skeleton" />
+      <div v-if="loading && cards.length === 0" class="masonry-grid" :class="`cols-${columnCount}`">
+        <div v-for="n in columnCount" :key="n" class="masonry-column">
+          <div v-for="i in Math.ceil(8 / columnCount)" :key="i" class="card card-skeleton" />
         </div>
       </div>
       <div v-else class="masonry-grid" :class="`cols-${columnCountRef}`">
