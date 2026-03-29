@@ -1,11 +1,11 @@
 import { getDb } from '../../../utils/db';
 import { findNearestNeighbors } from '../../../utils/embeddings';
 import { deserializeVector } from '../../../utils/vectors';
-import { getBookmarkById } from '../../../utils/ingest';
+import { getRouterParam } from 'h3';
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
-  const bookmarkId = Number(query.bookmarkId);
+  const bookmarkId = Number(getRouterParam(event, 'id'));
   const limit = Math.min(Number(query.limit) || 5, 20);
   const minScore = Number(query.minScore) || 0.7;
 

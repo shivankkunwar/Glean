@@ -595,8 +595,11 @@ async function fetchPage(pageNum: number) {
     page: pageNum, limit: 24,
     ...(categoryId.value ? { categoryId: categoryId.value } : {})
   };
-  if (searchQuery.value) {
-    return await $fetch('/api/search', { query: { q: String(searchQuery.value), mode: 'keyword', ...params } }) as { items: BookmarkCard[]; total: number };
+  const rawQuery = searchQuery.value;
+  const query = (rawQuery && typeof rawQuery === 'string' ? rawQuery.trim() : '').replace(/\s+/g, ' ');
+  if (query.length > 0) {
+    const searchMode = isAuthenticated.value ? 'semantic' : 'keyword';
+    return await $fetch('/api/search', { query: { q: query, mode: searchMode, ...params } }) as { items: BookmarkCard[]; total: number };
   }
   return await $fetch('/api/bookmarks', { query: params }) as { items: BookmarkCard[]; total: number };
 }
