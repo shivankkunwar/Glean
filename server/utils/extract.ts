@@ -1,8 +1,7 @@
 import { Readability } from '@mozilla/readability';
 import { DOMParser } from 'linkedom';
 import { load } from 'cheerio';
-// @ts-ignore
-import { YoutubeTranscript } from 'youtube-transcript/dist/youtube-transcript.esm.js';
+import { fetchTranscriptViaProxy } from './transcriptProxy';
 
 export type BookmarkSourceType = 'youtube' | 'twitter' | 'github' | 'article' | 'generic' | 'reddit';
 
@@ -831,14 +830,19 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
   if (parsed.isYouTube && parsed.isYoutubeWatch) {
     const payload = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
     
+    const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    const videoId = videoIdMatch ? videoIdMatch[1] : null;
+    
     let transcriptText: string | null = null;
-    try {
-      const transcript = await YoutubeTranscript.fetchTranscript(url);
-      if (transcript && transcript.length > 0) {
-        transcriptText = transcript.map((t: {text: string}) => t.text).join(' ').slice(0, 20000);
+    if (videoId) {
+      try {
+        const transcript = await fetchTranscriptViaProxy(videoId);
+        if (transcript && transcript.length > 0) {
+          transcriptText = transcript.map((t: {text: string}) => t.text).join(' ').slice(0, 20000);
+        }
+      } catch {
+        // Transcript unavailable - degrade gracefully to title + description
       }
-    } catch {
-      // Transcript unavailable - degrade gracefully to title + description
     }
 
     if (payload) {
