@@ -1,7 +1,10 @@
-import ytdl from 'yt-dlp-exec';
+import { exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 export interface YtdlpMetadata {
   title: string;
@@ -20,15 +23,19 @@ export interface YtdlpSubtitle {
   duration: number;
 }
 
+function getYtdlpCommand(): string {
+  return 'yt-dlp';
+}
+
 export async function fetchYouTubeMetadata(url: string): Promise<YtdlpMetadata | null> {
   try {
-    const result = await ytdl(url, {
-      dumpSingleJson: true,
-      noPlaylist: true,
-      skipDownload: true,
-      noWarnings: true,
-      quiet: true,
-    });
+    const ytdlp = getYtdlpCommand();
+    const { stdout } = await execAsync(
+      `${ytdlp} --dump-json --no-playlist --skip-download --quiet "${url}"`,
+      { timeout: 30000 }
+    );
+
+    const result = JSON.parse(stdout);
 
     return {
       title: result.title || 'Unknown Title',
@@ -49,18 +56,17 @@ export async function fetchYouTubeMetadata(url: string): Promise<YtdlpMetadata |
 function parseVTT(vttContent: string): YtdlpSubtitle[] {
   const subtitles: YtdlpSubtitle[] = [];
   const lines = vttContent.split('\n');
-  
+
   let i = 0;
   while (i < lines.length) {
     const line = lines[i]!;
     if (line.includes('-->')) {
-      const timeLine = line;
-      const timeMatch = timeLine.match(/(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
-      
+      const timeMatch = line.match(/(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
+
       if (timeMatch && timeMatch.length >= 8) {
         const start = parseInt(timeMatch[1]!) * 3600 + parseInt(timeMatch[2]!) * 60 + parseInt(timeMatch[3]!) + parseInt(timeMatch[4]!) / 1000;
         const end = parseInt(timeMatch[5]!) * 3600 + parseInt(timeMatch[6]!) * 60 + parseInt(timeMatch[7]!) + parseInt(timeMatch[8]!) / 1000;
-        
+
         i++;
         let text = '';
         while (i < lines.length) {
@@ -69,7 +75,7 @@ function parseVTT(vttContent: string): YtdlpSubtitle[] {
           text += (text ? ' ' : '') + textLine.replace(/<[^>]+>/g, '').trim();
           i++;
         }
-        
+
         if (text) {
           subtitles.push({
             text,
@@ -82,33 +88,24 @@ function parseVTT(vttContent: string): YtdlpSubtitle[] {
     }
     i++;
   }
-  
+
   return subtitles;
 }
 
 export async function fetchYouTubeTranscript(url: string, lang = 'en'): Promise<YtdlpSubtitle[] | null> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ytdlp-transcript-'));
-  
-  try {
-    const outputTemplate = path.join(tmpDir, 'transcript.%(ext)s');
-    
-    await ytdl(url, {
-      writeAutoSub: true,
-      subLang: lang,
-      skipDownload: true,
-      output: outputTemplate,
-      noWarnings: true,
-      quiet: true,
-    });
 
+  try {
     const vttPath = path.join(tmpDir, `transcript.${lang}.vtt`);
-    
+    const ytdlp = getYtdlpCommand();
+
+    await execAsync(
+      `${ytdlp} --write-auto-sub --sub-lang ${lang} --sub-format vtt --skip-download --quiet --output "${vttPath}" "${url}"`,
+      { timeout: 60000 }
+    );
+
     if (!fs.existsSync(vttPath)) {
-      const files = fs.readdirSync(tmpDir);
-      const vttFile = files.find(f => f.endsWith('.vtt'));
-      if (!vttFile) {
-        return null;
-      }
+      return null;
     }
 
     const vttContent = fs.readFileSync(vttPath, 'utf-8');
