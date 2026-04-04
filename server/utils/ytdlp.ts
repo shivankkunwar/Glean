@@ -23,15 +23,35 @@ export interface YtdlpSubtitle {
   duration: number;
 }
 
-function getYtdlpCommand(): string {
-  return 'yt-dlp';
+function getYtdlpPath(): string {
+  const isWindows = os.platform() === 'win32';
+  const binaryName = isWindows ? 'yt-dlp.exe' : 'yt-dlp';
+
+  const commonPaths = [
+    binaryName,
+    `/usr/local/bin/${binaryName}`,
+    `/usr/bin/${binaryName}`,
+    path.join(process.cwd(), 'node_modules', '.bin', binaryName),
+    path.join(process.cwd(), 'node_modules', 'yt-dlp-exec', 'bin', binaryName),
+  ];
+
+  for (const p of commonPaths) {
+    try {
+      fs.accessSync(p, fs.constants.X_OK);
+      return p;
+    } catch {
+      // not accessible, try next
+    }
+  }
+
+  return binaryName;
 }
 
 export async function fetchYouTubeMetadata(url: string): Promise<YtdlpMetadata | null> {
   try {
-    const ytdlp = getYtdlpCommand();
+    const ytdlp = getYtdlpPath();
     const { stdout } = await execAsync(
-      `${ytdlp} --dump-json --no-playlist --skip-download --quiet "${url}"`,
+      `"${ytdlp}" --dump-json --no-playlist --skip-download --quiet "${url}"`,
       { timeout: 30000 }
     );
 
@@ -96,19 +116,22 @@ export async function fetchYouTubeTranscript(url: string, lang = 'en'): Promise<
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ytdlp-transcript-'));
 
   try {
+    const ytdlp = getYtdlpPath();
     const vttPath = path.join(tmpDir, `transcript.${lang}.vtt`);
-    const ytdlp = getYtdlpCommand();
+    const vttPathWithLang = path.join(tmpDir, `transcript.${lang}.vtt.${lang}.vtt`);
 
     await execAsync(
-      `${ytdlp} --write-auto-sub --sub-lang ${lang} --sub-format vtt --skip-download --quiet --output "${vttPath}" "${url}"`,
+      `"${ytdlp}" --write-auto-sub --sub-lang ${lang} --sub-format vtt --skip-download --quiet --output "${vttPath}" "${url}"`,
       { timeout: 60000 }
     );
 
-    if (!fs.existsSync(vttPath)) {
+    const actualPath = fs.existsSync(vttPath) ? vttPath : (fs.existsSync(vttPathWithLang) ? vttPathWithLang : null);
+
+    if (!actualPath) {
       return null;
     }
 
-    const vttContent = fs.readFileSync(vttPath, 'utf-8');
+    const vttContent = fs.readFileSync(actualPath, 'utf-8');
     return parseVTT(vttContent);
   } catch (err) {
     console.error('yt-dlp transcript fetch failed:', err);
