@@ -1,6 +1,7 @@
 import { Readability } from '@mozilla/readability';
 import { DOMParser } from 'linkedom';
 import { load } from 'cheerio';
+import { fetchYouTubeMetadata } from './ytdlp';
 import { fetchTranscriptViaProxy } from './transcriptProxy';
 
 export type BookmarkSourceType = 'youtube' | 'twitter' | 'github' | 'article' | 'generic' | 'reddit';
@@ -828,29 +829,24 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
         : 'generic';
 
   if (parsed.isYouTube && parsed.isYoutubeWatch) {
-    const payload = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
-    
-    const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-    const videoId = videoIdMatch ? videoIdMatch[1] : null;
+    const metadata = await fetchYouTubeMetadata(url);
     
     let transcriptText: string | null = null;
-    if (videoId) {
-      try {
-        const transcript = await fetchTranscriptViaProxy(videoId);
-        if (transcript && transcript.length > 0) {
-          transcriptText = transcript.map((t: {text: string}) => t.text).join(' ').slice(0, 20000);
-        }
-      } catch {
-        // Transcript unavailable - degrade gracefully to title + description
+    try {
+      const transcript = await fetchTranscriptViaProxy(url);
+      if (transcript && transcript.length > 0) {
+        transcriptText = transcript.map((t: {text: string}) => t.text).join(' ').slice(0, 20000);
       }
+    } catch {
+      // Transcript unavailable - degrade gracefully
     }
 
-    if (payload) {
+    if (metadata) {
       return {
-        title: safeText(payload.title),
-        description: safeText(payload.author_name),
-        content: transcriptText || safeText(payload.title),
-        ogImage: safeText(payload.thumbnail_url),
+        title: safeText(metadata.title),
+        description: metadata.channelName ? safeText(metadata.channelName) : null,
+        content: transcriptText || safeText(metadata.title),
+        ogImage: safeText(metadata.thumbnail),
         favicon: 'https://www.youtube.com/favicon.ico',
         domain: parsed.hostname,
         sourceType

@@ -16,6 +16,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "yt-dlp-exec": "^1.0.0",
     "@mozilla/readability": "^0.6.0",
     "@vite-pwa/nuxt": "^1.1.1",
     "better-sqlite3": "^12.6.2",
