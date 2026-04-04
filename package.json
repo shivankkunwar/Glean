@@ -13,7 +13,7 @@
     "generate": "nuxt generate",
     "start": "node .output/server/index.mjs",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ./node_modules/.bin/yt-dlp && chmod +x ./node_modules/.bin/yt-dlp"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
