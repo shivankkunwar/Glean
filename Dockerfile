@@ -3,7 +3,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache curl ffmpeg
+RUN apk add --no-cache curl ffmpeg python3
 
 # Download yt-dlp binary
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
@@ -27,7 +27,7 @@ FROM node:22-alpine AS production
 WORKDIR /app
 
 # Install ffmpeg for video processing and curl
-RUN apk add --no-cache curl ffmpeg
+RUN apk add --no-cache curl ffmpeg python3
 
 # Copy yt-dlp from builder
 COPY --from=builder /usr/local/bin/yt-dlp /usr/local/bin/yt-dlp
