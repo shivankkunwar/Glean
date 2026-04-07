@@ -131,7 +131,7 @@
             :class="cardClasses(card)"
             :data-type="cardType(card)"
             :style="{ animationDelay: `${Math.min(localIdx * 30, 240)}ms` }"
-            @click.stop="navigateTo('/bookmarks/' + card.id)"
+            @click.stop="openCard(card)"
           >
             <template v-if="cardType(card) !== 'note'">
               <div class="card-image" v-if="cardType(card) !== 'book'">
@@ -200,10 +200,23 @@
               <p v-if="cardDescription(card) && cardType(card) !== 'note'" class="card-excerpt">{{ cardDescription(card) }}</p>
               <p v-if="isProcessing(card)" class="processing-status">{{ processingStatusText(card) }}</p>
 
-              <div class="card-meta">
-                <span>{{ cardDomain(card) }}</span>
-                <span v-if="card.savedAt" class="dot" />
-                <time v-if="card.savedAt" class="numeric">{{ relativeTime(card.savedAt) }}</time>
+              <div class="card-meta-row">
+                <div class="card-meta">
+                  <span>{{ cardDomain(card) }}</span>
+                  <span v-if="card.savedAt" class="dot" />
+                  <time v-if="card.savedAt" class="numeric">{{ relativeTime(card.savedAt) }}</time>
+                </div>
+                <a
+                  v-if="card.url && cardType(card) !== 'note'"
+                  :href="card.url"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  class="card-open-link"
+                  aria-label="Open original link"
+                  @click.stop
+                >
+                  <i class="ph ph-arrow-square-out" />
+                </a>
               </div>
             </div>
           </article>
@@ -586,6 +599,14 @@ function openReading(card: BookmarkCard) {
 
 watch(readingCard, (val) => { if (!val) document.body.style.overflow = ''; });
 
+// ── Scroll position preservation ──────────────────────────────────────
+const SCROLL_KEY = 'glean:home:scrollY';
+
+function openCard(card: BookmarkCard) {
+  sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+  navigateTo('/bookmarks/' + card.id);
+}
+
 // ── Data fetching ─────────────────────────────────────────────────────
 function normalizeCards(items: BookmarkCard[]): BookmarkCard[] {
   return (items || []).map(item => ({ ...item, tags: item.tags || [] }));
@@ -677,6 +698,15 @@ onMounted(async () => {
   document.addEventListener('keydown', onKeyDown);
   window.addEventListener('resize', updateColumnCount);
   updateColumnCount();
+
+  // Restore scroll position after returning from a bookmark detail page
+  const savedScrollY = sessionStorage.getItem(SCROLL_KEY);
+  if (savedScrollY) {
+    sessionStorage.removeItem(SCROLL_KEY);
+    await nextTick();
+    window.scrollTo({ top: Number(savedScrollY), behavior: 'instant' });
+  }
+
   refreshTimer = setInterval(() => {
     if (cards.value.some(isProcessing)) {
       const scrollY = window.scrollY;
@@ -915,12 +945,36 @@ onBeforeUnmount(() => {
   display: -webkit-box; -webkit-box-orient: vertical;
   -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; margin-bottom: 8px;
 }
+
+/* Card meta row — holds domain info + open-link button */
+.card-meta-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+
+/* Direct open-link button — bottom-left of the card, minimal */
+.card-open-link {
+  flex-shrink: 0;
+  width: 24px; height: 24px; border-radius: 6px;
+  display: grid; place-items: center;
+  color: var(--text-muted); font-size: 13px;
+  opacity: 0; transform: scale(0.85);
+  transition: opacity var(--d-fast) var(--ease-out), transform var(--d-fast) var(--ease-out), color var(--d-fast), background var(--d-fast);
+  text-decoration: none;
+}
+.card:hover .card-open-link {
+  opacity: 1; transform: scale(1);
+}
+.card-open-link:hover {
+  color: var(--color-accent) !important;
+  background: var(--color-accent-bg);
+  transform: scale(1.1) !important;
+}
 .card-excerpt {
   font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.55;
   display: -webkit-box; -webkit-box-orient: vertical;
   -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; margin-bottom: 12px;
 }
-.card-meta { display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); color: var(--text-tertiary); }
+.card-meta { display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); color: var(--text-tertiary); flex: 1; min-width: 0; }
 .dot::before { content: "·"; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .card-tag { font-size: var(--text-xs); color: var(--ref-pine); background: var(--color-accent-bg); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
