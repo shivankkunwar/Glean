@@ -804,6 +804,19 @@ function fallbackMeta($: ReturnType<typeof load>, fallbackUrl: string, parts: Re
   return { title, description, ogImage, favicon };
 }
 
+function extractYoutubeId(parsed: URL): string | null {
+  if (parsed.hostname.endsWith('youtu.be')) {
+    return parsed.pathname.slice(1);
+  }
+  if (parsed.pathname.startsWith('/watch')) {
+    return parsed.searchParams.get('v');
+  }
+  if (parsed.pathname.startsWith('/live/') || parsed.pathname.startsWith('/shorts/')) {
+    return parsed.pathname.split('/')[2] || null;
+  }
+  return null;
+}
+
 export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata> {
   if (url.startsWith('note:')) {
     return {
@@ -827,19 +840,46 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
         : 'generic';
 
   if (parsed.isYouTube && parsed.isYoutubeWatch) {
+    const apiKey = process.env.YOUTUBE_API;
+    const videoId = extractYoutubeId(new URL(url));
+
+    if (apiKey && videoId) {
+      const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+      const data = await fetchJson(apiUrl) as any;
+      if (data?.items?.[0]?.snippet) {
+         const snippet = data.items[0].snippet;
+         return {
+           title: (snippet.title as string)?.trim() || 'YouTube Video',
+           description: (snippet.description as string)?.trim() || null,
+           content: null,
+           ogImage: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.standard?.url || snippet.thumbnails?.default?.url || null,
+           favicon: 'https://www.youtube.com/favicon.ico',
+           domain: parsed.hostname,
+           sourceType,
+           sourceMetadata: {
+             ...snippet,
+             authorName: snippet.channelTitle
+           }
+         };
+      }
+    }
+
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
     const payload = await fetchJson(oembedUrl) as any;
 
     if (payload) {
       return {
-        title: safeText(payload.title) || 'YouTube Video',
-        description: safeText(payload.author_name) || null,
+        title: (payload.title as string)?.trim() || 'YouTube Video',
+        description: null,
         content: null,
-        ogImage: safeText(payload.thumbnail_url),
+        ogImage: (payload.thumbnail_url as string)?.trim() || null,
         favicon: 'https://www.youtube.com/favicon.ico',
         domain: parsed.hostname,
         sourceType,
-        sourceMetadata: payload
+        sourceMetadata: {
+          ...payload,
+          authorName: payload.author_name
+        }
       };
     }
   }
