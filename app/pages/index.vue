@@ -688,7 +688,14 @@ function relativeTime(iso?: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-watch(() => route.fullPath, () => { void loadInitial(); });
+// Watch only the query params that affect data fetching.
+// The `mountedRef` guard prevents a double-fetch on initial mount
+// (onMounted already calls loadInitial directly).
+const mountedRef = ref(false);
+watch(
+  () => [route.query.q, route.query.tag, route.query.categoryId] as const,
+  () => { if (mountedRef.value) void loadInitial(); },
+);
 
 onMounted(async () => {
   await loadInitial();
@@ -706,6 +713,9 @@ onMounted(async () => {
     await nextTick();
     window.scrollTo({ top: Number(savedScrollY), behavior: 'instant' });
   }
+
+  // Activate route watcher only after initial load so it doesn't double-fetch
+  mountedRef.value = true;
 
   refreshTimer = setInterval(() => {
     if (cards.value.some(isProcessing)) {
