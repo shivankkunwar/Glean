@@ -1,8 +1,6 @@
 import { Readability } from '@mozilla/readability';
 import { DOMParser } from 'linkedom';
 import { load } from 'cheerio';
-import { fetchYouTubeMetadata } from './ytdlp';
-import { fetchTranscriptViaProxy } from './transcriptProxy';
 
 export type BookmarkSourceType = 'youtube' | 'twitter' | 'github' | 'article' | 'generic' | 'reddit';
 
@@ -91,7 +89,7 @@ function parseUrlParts(url: string) {
     isYouTube: /youtube\.com$|youtu\.be$/.test(parsed.hostname),
     isTwitter: /x\.com$|twitter\.com$/.test(parsed.hostname),
     isGitHub: parsed.hostname.endsWith('github.com'),
-    isYoutubeWatch: /\/watch/.test(parsed.pathname) || /youtu\.be/.test(parsed.hostname),
+    isYoutubeWatch: /\/watch/.test(parsed.pathname) || /\/live/.test(parsed.pathname) || /\/shorts/.test(parsed.pathname) || /youtu\.be/.test(parsed.hostname),
     isReddit: parsed.hostname.endsWith('reddit.com') || parsed.hostname === 'old.reddit.com',
     isGitHubApi: /api\.github\.com$/.test(parsed.hostname)
   };
@@ -829,27 +827,19 @@ export async function getBookmarkMetadata(url: string): Promise<BookmarkMetadata
         : 'generic';
 
   if (parsed.isYouTube && parsed.isYoutubeWatch) {
-    const metadata = await fetchYouTubeMetadata(url);
-    
-    let transcriptText: string | null = null;
-    try {
-      const transcript = await fetchTranscriptViaProxy(url);
-      if (transcript && transcript.length > 0) {
-        transcriptText = transcript.map((t: {text: string}) => t.text).join(' ').slice(0, 20000);
-      }
-    } catch {
-      // Transcript unavailable - degrade gracefully
-    }
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const payload = await fetchJson(oembedUrl) as any;
 
-    if (metadata) {
+    if (payload) {
       return {
-        title: safeText(metadata.title),
-        description: metadata.channelName ? safeText(metadata.channelName) : null,
-        content: transcriptText || safeText(metadata.title),
-        ogImage: safeText(metadata.thumbnail),
+        title: safeText(payload.title) || 'YouTube Video',
+        description: safeText(payload.author_name) || null,
+        content: null,
+        ogImage: safeText(payload.thumbnail_url),
         favicon: 'https://www.youtube.com/favicon.ico',
         domain: parsed.hostname,
-        sourceType
+        sourceType,
+        sourceMetadata: payload
       };
     }
   }
