@@ -27,6 +27,9 @@ input, textarea { background: none; border: none; font: inherit; color: inherit;
 :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; border-radius: 4px; }
 :focus:not(:focus-visible) { outline: none; }
 
+.font-editorial { font-family: var(--font-editorial); }
+.font-body { font-family: var(--font-body); }
+
 /* ==========================================================================
    SHARED UTILITIES (used across pages)
    ========================================================================== */

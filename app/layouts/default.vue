@@ -28,6 +28,9 @@
       </div>
 
       <div class="header-right">
+        <NuxtLink to="/curated" class="header-link curated-link" :class="{ active: route.path === '/curated' }">
+          Curated
+        </NuxtLink>
         <button class="header-link" id="collections-btn" @click.stop="toggleCollections"
           :aria-expanded="collectionsOpen">
           Collections
@@ -292,8 +295,10 @@ watch(() => route.fullPath, () => { collectionsOpen.value = false; });
   font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500;
   display: flex; align-items: center; gap: 4px;
   transition: color var(--d-instant) var(--ease-quart);
+  text-decoration: none;
 }
 .header-link:hover { color: var(--text-primary); }
+.header-link.active { color: var(--color-accent); }
 .header-link i { transition: transform var(--d-fast) var(--ease-out); }
 
 .header-avatar-wrap { display: flex; align-items: center; }
@@ -427,6 +432,7 @@ watch(() => route.fullPath, () => { collectionsOpen.value = false; });
   .site-header { padding: 14px 20px; gap: 12px; }
   .collections-popover { right: 16px; top: 56px; width: calc(100vw - 32px); }
   .header-link { display: none; }
+  .header-link.curated-link { display: flex; }
   .header-compact-search { max-width: 100%; }
 }
 </style>
