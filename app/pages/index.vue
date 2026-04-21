@@ -1443,6 +1443,7 @@ onBeforeUnmount(() => {
   animation: bucket-enter 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: var(--bucket-delay, 0ms);
   will-change: transform;
+  -webkit-tap-highlight-color: transparent;
   /* Paper & Ink — cardstock cover over ink interior */
   --folder-fill: oklch(93% 0.018 72);      /* warm cardstock, between cloud & parchment */
   --folder-stroke: oklch(84% 0.022 68);    /* matches --border-default */
