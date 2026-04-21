@@ -293,7 +293,8 @@ function trySearchStrategies(
         b.source_metadata,
         b.created_at,
         CASE
-          WHEN lower(COALESCE(b.source_metadata, '')) LIKE @likeQuery THEN 0.25
+          WHEN lower(COALESCE(b.source_type, '')) LIKE @likeQuery THEN 0.2
+          WHEN lower(COALESCE(b.source_metadata, '')) LIKE @likeQuery THEN 0.3
           WHEN lower(COALESCE(b.domain, '')) LIKE @likeQuery THEN 0.5
           WHEN lower(COALESCE(b.url, '')) LIKE @likeQuery THEN 0.75
           ELSE 1
@@ -307,6 +308,7 @@ function trySearchStrategies(
           'No preview available'
         ) AS snippet,
         CASE 
+          WHEN lower(COALESCE(b.source_type, '')) LIKE @likeQuery THEN 'source_type'
           WHEN lower(COALESCE(b.domain, '')) LIKE @likeQuery THEN 'domain'
           WHEN lower(COALESCE(b.source_metadata, '')) LIKE @likeQuery THEN 'metadata'
           WHEN lower(COALESCE(b.url, '')) LIKE @likeQuery THEN 'url'
@@ -314,6 +316,7 @@ function trySearchStrategies(
         END AS matched_column
        FROM bookmarks b
        WHERE (
+         lower(COALESCE(b.source_type, '')) LIKE @likeQuery OR
          lower(COALESCE(b.source_metadata, '')) LIKE @likeQuery OR
          lower(COALESCE(b.domain, '')) LIKE @likeQuery OR
          lower(COALESCE(b.url, '')) LIKE @likeQuery
@@ -329,6 +332,7 @@ function trySearchStrategies(
         `SELECT COUNT(*) AS total
          FROM bookmarks b
          WHERE (
+           lower(COALESCE(b.source_type, '')) LIKE @likeQuery OR
            lower(COALESCE(b.source_metadata, '')) LIKE @likeQuery OR
            lower(COALESCE(b.domain, '')) LIKE @likeQuery OR
            lower(COALESCE(b.url, '')) LIKE @likeQuery

@@ -147,7 +147,7 @@
                       <path
                         d="M104.615 0.350494L33.1297 0.838776C32.7542 0.841362 32.3825 0.881463 32.032 0.918854C31.6754 0.956907 31.3392 0.992086 31.0057 0.992096H31.0047C30.6871 0.99235 30.3673 0.962051 30.0272 0.929596C29.6927 0.897686 29.3384 0.863802 28.9803 0.866119L13.2693 0.967682H13.2527L13.2352 0.969635C13.1239 0.981406 13.0121 0.986674 12.9002 0.986237H9.91388C8.33299 0.958599 6.76052 1.22345 5.27423 1.76651H5.27325C4.33579 2.11246 3.48761 2.66213 2.7879 3.37393L2.49689 3.68839L2.492 3.69424C1.62667 4.73882 1.00023 5.96217 0.656067 7.27725C0.653324 7.28773 0.654065 7.29886 0.652161 7.30948C0.3098 8.62705 0.257231 10.0048 0.499817 11.3446L12.2147 114.399L12.2156 114.411L12.2176 114.423C12.6046 116.568 13.7287 118.508 15.3934 119.902C17.058 121.297 19.1572 122.056 21.3231 122.049V122.05H215.379C217.76 122.02 220.064 121.192 221.926 119.698V119.697C223.657 118.384 224.857 116.485 225.305 114.35L225.307 114.339L235.914 53.3798L235.968 53.1093L235.97 53.0985L235.971 53.0888C236.134 51.8978 236.044 50.685 235.705 49.5321C235.307 48.1669 234.63 46.9005 233.717 45.8144L233.383 45.4296C232.58 44.5553 231.614 43.8449 230.539 43.3398C229.311 42.7628 227.971 42.4685 226.616 42.4774H146.746C144.063 42.4705 141.423 41.8004 139.056 40.5263C136.691 39.2522 134.671 37.4127 133.175 35.1689L113.548 5.05948L113.544 5.05362L113.539 5.04776C112.545 3.65165 111.238 2.51062 109.722 1.72061C108.266 0.886502 106.627 0.422235 104.952 0.365143V0.364166L104.633 0.350494H104.615Z"
                         fill="var(--folder-fill)"
-                        fill-opacity="0.35"
+                        fill-opacity="0.92"
                         stroke="var(--folder-stroke)"
                         stroke-width="0.7"
                       />
@@ -549,6 +549,8 @@ const SOURCE_TYPES = [
 ] as const;
 
 const sourceBuckets = computed(() => {
+  const sq = searchQuery.value.toLowerCase().trim();
+  
   return SOURCE_TYPES
     .map(st => {
       const matches = cards.value.filter(c => cardType(c) === st.type);
@@ -560,7 +562,12 @@ const sourceBuckets = computed(() => {
       }));
       return { ...st, count: matches.length, previews };
     })
-    .filter(b => b.count > 0);
+    .filter(b => {
+      if (b.count > 0) return true;
+      // Include the bucket if we're searching and the category name matches the query
+      if (sq && b.label.toLowerCase().includes(sq)) return true;
+      return false;
+    });
 });
 
 // ── Stable column assignment for masonry grid ─────────────────────────
@@ -954,7 +961,10 @@ onBeforeUnmount(() => {
 }
 .smart-input-wrap.has-value .inline-save-btn { opacity: 1; transform: scale(1) translateX(0); pointer-events: auto; }
 .smart-input-wrap.is-url .inline-save-btn { background: var(--color-accent); box-shadow: var(--shadow-accent); }
-.inline-save-btn:hover { transform: scale(1) translateX(0) translateY(-1px) !important; }
+
+@media (hover: hover) and (pointer: fine) {
+  .inline-save-btn:hover { transform: scale(1) translateX(0) translateY(-1px) !important; }
+}
 
 /* hint text removed — UI is self-explanatory */
 
@@ -1072,9 +1082,13 @@ onBeforeUnmount(() => {
   animation: card-enter var(--d-base) var(--ease-out) both;
   user-select: none; -webkit-user-select: none;
 }
-@keyframes card-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-.card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+@keyframes card-enter { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .card:active { transform: scale(0.98) translateY(-2px); transition-duration: var(--d-instant); }
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .card:hover .card-image img { transform: scale(1.04); }
+}
 
 .card-skeleton { height: 240px; background: var(--bg-raised); animation: skeleton-pulse 1.5s ease-in-out infinite; }
 @keyframes skeleton-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -1082,7 +1096,6 @@ onBeforeUnmount(() => {
 /* Card image */
 .card-image { position: relative; overflow: hidden; }
 .card-image img { width: 100%; height: auto; display: block; object-fit: cover; transition: transform var(--d-slow) var(--ease-out); }
-.card:hover .card-image img { transform: scale(1.04); }
 .card-gradient { width: 100%; height: 160px; }
 
 /* Card body */
@@ -1109,13 +1122,16 @@ onBeforeUnmount(() => {
   transition: opacity var(--d-fast) var(--ease-out), transform var(--d-fast) var(--ease-out), color var(--d-fast), background var(--d-fast);
   text-decoration: none;
 }
-.card:hover .card-open-link {
-  opacity: 1; transform: scale(1);
-}
-.card-open-link:hover {
-  color: var(--color-accent) !important;
-  background: var(--color-accent-bg);
-  transform: scale(1.1) !important;
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .card-open-link {
+    opacity: 1; transform: scale(1);
+  }
+  .card-open-link:hover {
+    color: var(--color-accent) !important;
+    background: var(--color-accent-bg);
+    transform: scale(1.1) !important;
+  }
 }
 .card-excerpt {
   font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.55;
@@ -1136,8 +1152,11 @@ onBeforeUnmount(() => {
   opacity: 0; transform: scale(0.9) translateY(4px);
   transition: opacity var(--d-fast) var(--ease-out), transform var(--d-fast) var(--ease-out);
 }
-.card:hover .card-action { opacity: 1; transform: scale(1) translateY(0); }
-.card-action:hover { color: oklch(55% 0.18 20) !important; transform: scale(1.15) !important; }
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .card-action { opacity: 1; transform: scale(1) translateY(0); }
+  .card-action:hover { color: oklch(55% 0.18 20) !important; transform: scale(1.15) !important; }
+}
 
 /* Pin badge — overlays top-left corner of pinned cards */
 .pin-badge {
@@ -1155,10 +1174,11 @@ onBeforeUnmount(() => {
   opacity: 0; transform: translateY(-4px);
   transition: opacity var(--d-fast) var(--ease-out), transform var(--d-fast);
 }
-.card:hover .note-card-actions { opacity: 1; transform: translateY(0); }
 
-/* Reading action states */
-.reading-action-btn.danger:hover { color: oklch(55% 0.18 20); }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .note-card-actions { opacity: 1; transform: translateY(0); }
+  .reading-action-btn.danger:hover { color: oklch(55% 0.18 20); }
+}
 .reading-action-btn.is-active-action { color: var(--color-accent); }
 
 /* Processing card */
@@ -1192,7 +1212,9 @@ onBeforeUnmount(() => {
   display: grid; place-items: center; color: var(--text-primary); font-size: 22px;
   opacity: 0; transition: opacity var(--d-fast) var(--ease-out); box-shadow: var(--shadow-md);
 }
-.card--video:hover .play-btn { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .card--video:hover .play-btn { opacity: 1; }
+}
 .duration-badge {
   position: absolute; bottom: 10px; right: 10px;
   background: oklch(13% 0.016 58 / 0.68); backdrop-filter: blur(6px);
@@ -1212,7 +1234,9 @@ onBeforeUnmount(() => {
 /* Book card */
 .card--book .book-cover { padding: 20px 24px; display: flex; justify-content: center; perspective: 600px; background: var(--gradient-sand); }
 .book-3d { width: 110px; transform: rotateY(-12deg); transform-style: preserve-3d; transition: transform var(--d-slow) var(--ease-out); position: relative; }
-.card--book:hover .book-3d { transform: rotateY(-6deg); }
+@media (hover: hover) and (pointer: fine) {
+  .card--book:hover .book-3d { transform: rotateY(-6deg); }
+}
 .book-3d img { width: 100%; border-radius: 4px; box-shadow: var(--shadow-md); display: block; }
 .book-placeholder { width: 100%; height: 140px; display: grid; place-items: center; background: var(--bg-raised); border-radius: 4px; font-size: 32px; color: var(--text-muted); }
 .book-spine { position: absolute; top: 4px; left: -8px; width: 8px; height: calc(100% - 8px); background: var(--ref-terracotta-dark); border-radius: 2px 0 0 2px; transform: rotateY(90deg); transform-origin: right center; }
@@ -1233,7 +1257,6 @@ onBeforeUnmount(() => {
   opacity: 0; pointer-events: none;
   transition: opacity var(--d-fast) var(--ease-out), transform var(--d-fast) var(--ease-out);
 }
-.fab-wrap:hover .fab-tooltip { opacity: 1; transform: translateY(-50%) translateX(0); }
 .fab {
   width: 52px; height: 52px; border-radius: 50%;
   background: var(--color-accent); color: var(--text-inverse);
@@ -1241,8 +1264,12 @@ onBeforeUnmount(() => {
   display: grid; place-items: center; font-size: 22px;
   transition: transform var(--d-fast) var(--ease-out), box-shadow var(--d-fast) var(--ease-out);
 }
-.fab:hover { transform: scale(1.08); box-shadow: var(--shadow-xl), 0 6px 24px oklch(38% 0.105 189 / 0.35); }
 .fab:active { transform: scale(0.93); }
+
+@media (hover: hover) and (pointer: fine) {
+  .fab-wrap:hover .fab-tooltip { opacity: 1; transform: translateY(-50%) translateX(0); }
+  .fab:hover { transform: scale(1.08); box-shadow: var(--shadow-xl), 0 6px 24px oklch(38% 0.105 189 / 0.35); }
+}
 
 /* ── Tray ────────────────────────────────────────────────────────── */
 .glass-overlay {
@@ -1258,7 +1285,7 @@ onBeforeUnmount(() => {
   background: var(--bg-surface); border-radius: 24px 24px 0 0;
   padding: 32px; box-shadow: 0 -14px 52px oklch(13% 0.016 58 / 0.07);
   transform: translateY(100%);
-  transition: transform var(--d-slow) var(--ease-spring);
+  transition: transform var(--d-base) var(--ease-out);
 }
 .glass-overlay.is-active .tray-content { transform: translateY(0); }
 .tray-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -1269,7 +1296,9 @@ onBeforeUnmount(() => {
   color: var(--text-secondary); font-size: 14px;
   transition: background var(--d-fast), color var(--d-fast);
 }
-.tray-dismiss:hover { background: var(--border-default); color: var(--text-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .tray-dismiss:hover { background: var(--border-default); color: var(--text-primary); }
+}
 .tray-input {
   width: 100%; font-size: var(--text-xl); padding: 16px 0;
   border-bottom: 2px solid var(--border-subtle); margin-bottom: 20px;
@@ -1364,8 +1393,9 @@ onBeforeUnmount(() => {
   animation: bucket-enter 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: var(--bucket-delay, 0ms);
   will-change: transform;
-  --folder-fill: oklch(24% 0.012 58);
-  --folder-stroke: oklch(45% 0.012 58 / 0.25);
+  /* Paper & Ink — cardstock cover over ink interior */
+  --folder-fill: oklch(93% 0.018 72);      /* warm cardstock, between cloud & parchment */
+  --folder-stroke: oklch(84% 0.022 68);    /* matches --border-default */
 }
 .bucket-card:active { transform: scale(0.97); }
 
@@ -1375,12 +1405,9 @@ onBeforeUnmount(() => {
 }
 
 /* ── 3D Folder Layout ────────────────────────────────────────────── */
-/* The top section containing the folder needs padding for animation pop-out */
 .folder-container {
-  padding: 40px 16px 12px;
-  background: var(--bg-surface);
+  padding: 36px 16px 8px;
   display: flex; justify-content: center; align-items: flex-end;
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* 3D Folder wrapper */
@@ -1391,15 +1418,16 @@ onBeforeUnmount(() => {
   perspective: 700px;
 }
 
-/* Inner folder body — dark background with inset glow */
+/* Inner folder body — same cardstock family as cover */
 .folder-body {
   position: absolute;
   inset: 0;
   width: 90%; height: 100%;
   margin: 0 auto;
   border-radius: 12px;
-  background: oklch(16% 0.014 58);
-  box-shadow: 0px 0px 16px 16px oklch(30% 0.014 58 / 0.30) inset;
+  /* Slightly deeper than cover for subtle recess feel */
+  background: oklch(88% 0.022 70);
+  box-shadow: 0px 0px 14px 10px oklch(84% 0.020 68 / 0.35) inset;
   display: flex; align-items: center; justify-content: center;
   overflow: visible;
 }
@@ -1407,14 +1435,15 @@ onBeforeUnmount(() => {
 /* Stacked page previews inside folder */
 .folder-page {
   position: absolute;
-  width: 56%;   /* Extremely prominent relative to folder */
+  width: 56%;
   aspect-ratio: 4 / 5;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 4px 16px oklch(0 0 0 / 0.25);
+  border: 1px solid oklch(82% 0.018 68);
+  box-shadow: 0 2px 8px oklch(13% 0.016 58 / 0.10), 0 1px 3px oklch(13% 0.016 58 / 0.06);
   transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
-  bottom: 12px; /* Anchor pages near the bottom so they rise up */
+  bottom: 12px;
 }
 
 /* Page positions at rest — tight stack */
@@ -1453,44 +1482,44 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column; gap: 5px;
   padding: 10px 8px;
   border-radius: 10px;
-  background: linear-gradient(160deg, oklch(90% 0.015 70), oklch(85% 0.018 65));
+  background: linear-gradient(160deg, oklch(98% 0.006 78), oklch(95% 0.012 72));
 }
 .folder-page-placeholder::before {
   content: '';
   display: block;
   width: 100%; height: 4px;
-  background: oklch(76% 0.02 68);
+  background: oklch(87% 0.016 70);
   border-radius: 2px;
   flex-shrink: 0;
   margin-bottom: 2px;
 }
 .folder-page-placeholder i {
-  display: none; /* hide icon — paper lines are the visual */
+  display: none;
 }
-/* Paper ruled lines via box-shadow stacking */
+/* Paper ruled lines */
 .folder-page-placeholder::after {
   content: '';
   flex: 1;
   background-image:
     repeating-linear-gradient(
       to bottom,
-      oklch(76% 0.02 68) 0px,
-      oklch(76% 0.02 68) 3px,
+      oklch(87% 0.016 70) 0px,
+      oklch(87% 0.016 70) 3px,
       transparent 3px,
       transparent 9px
     );
   border-radius: 2px;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 .folder-page--empty {
-  width: 100px; aspect-ratio: 3/4;
-  background: oklch(22% 0.01 58);
-  border: 1.5px dashed oklch(45% 0.012 58 / 0.35);
+  width: 56%; aspect-ratio: 4/5;
+  background: oklch(95% 0.012 72);
+  border: 1.5px dashed oklch(82% 0.020 68 / 0.5);
   border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   z-index: 1;
 }
-.folder-page--empty i { font-size: 28px; opacity: 0.2; color: var(--text-muted); }
+.folder-page--empty i { font-size: 28px; opacity: 0.25; color: var(--text-tertiary); }
 
 /* Folder front cover — tilts open on hover */
 .folder-cover {
@@ -1510,7 +1539,7 @@ onBeforeUnmount(() => {
 .folder-cover-svg {
   width: 100%; height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 -2px 8px oklch(0 0 0 / 0.08));
+  filter: drop-shadow(0 -2px 6px oklch(13% 0.016 58 / 0.06)) drop-shadow(0 2px 10px oklch(13% 0.016 58 / 0.10));
 }
 
 /* Bucket metadata bar (below folder) */
@@ -1590,11 +1619,27 @@ onBeforeUnmount(() => {
   .smart-input { padding: 14px 120px 14px 44px; font-size: var(--text-sm); border-radius: 14px; }
 
   /* View switcher */
-  .view-switcher-section { padding: 0 16px 20px; }
+  .view-switcher-section { padding: 0 16px 16px; }
 
-  /* Buckets */
-  .buckets-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .folder-container { padding: 32px 12px 12px; }
+  /* ── Buckets: premium 1-col mobile layout ───────────────────────── */
+  .buckets-grid { grid-template-columns: 1fr; gap: 16px; margin: 0 4px; }
+  .folder-container { padding: 52px 16px 16px; }
+  .folder-wrapper { max-width: 300px; } /* Restrain max size so it stays elegant */
+  
+  /* Rest state: stacked much wider on mobile to see the content clearly without hover */
+  .folder-page--0 { transform: rotate(-7deg) translateX(-36%) translateY(-18px); opacity: 0.9; }
+  .folder-page--1 { transform: rotate(0deg) translateX(0) translateY(-24px); opacity: 1; }
+  .folder-page--2 { transform: rotate(7deg) translateX(36%) translateY(-14px); opacity: 0.9; }
+  .folder-cover { transform: rotateX(-12deg); }
+
+  /* Active tap state: explode them outwards for very satisfying hard click feedback */
+  .bucket-card:active .folder-page--0 { transform: rotate(-12deg) translateX(-50%) translateY(-50px); opacity: 1; }
+  .bucket-card:active .folder-page--1 { transform: rotate(0deg) translateX(0) translateY(-64px); opacity: 1; }
+  .bucket-card:active .folder-page--2 { transform: rotate(12deg) translateX(50%) translateY(-44px); opacity: 1; }
+  .bucket-card:active .folder-cover { transform: rotateX(-36deg); }
+  
+  .bucket-meta { padding: 16px 16px 18px; gap: 6px; }
+  .bucket-label { font-size: var(--text-base); }
 
   /* Grid — stable 2-col layout */
   .masonry-grid { gap: 12px; }
