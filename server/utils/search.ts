@@ -1,8 +1,10 @@
 import { getDb } from '../utils/db';
+import { buildSourceTypePredicate, type SourceTypeFilter } from './source-type';
 
 type KeywordSearchParams = {
   query: string;
   categoryId?: number;
+  sourceType?: SourceTypeFilter;
   limit: number;
   offset: number;
 };
@@ -123,6 +125,7 @@ function trySearchStrategies(
   client: ReturnType<typeof getDb>['client'],
   query: string,
   categoryId: number | undefined,
+  sourceType: SourceTypeFilter | undefined,
   limit: number,
   offset: number
 ): { items: SearchResult[]; total: number; strategy: string } {
@@ -134,8 +137,11 @@ function trySearchStrategies(
     () => {
       const ftsQuery = buildFtsQuery(query);
       if (!ftsQuery) return null;
-      
-      const where = categoryId ? ' AND b.category_id = @categoryId ' : '';
+
+      const conditions: string[] = [];
+      if (categoryId) conditions.push('b.category_id = @categoryId');
+      if (sourceType) conditions.push(buildSourceTypePredicate(sourceType, 'b'));
+      const where = conditions.length ? ` AND ${conditions.join(' AND ')} ` : '';
       const results = client
         .prepare(
           `SELECT
@@ -168,7 +174,10 @@ function trySearchStrategies(
       if (words.length < 2) return null;
       
       const andQuery = words.join(' AND ');
-      const where = categoryId ? ' AND b.category_id = @categoryId ' : '';
+      const conditions: string[] = [];
+      if (categoryId) conditions.push('b.category_id = @categoryId');
+      if (sourceType) conditions.push(buildSourceTypePredicate(sourceType, 'b'));
+      const where = conditions.length ? ` AND ${conditions.join(' AND ')} ` : '';
       
       const results = client
         .prepare(
@@ -202,7 +211,10 @@ function trySearchStrategies(
       if (words.length < 2) return null;
       
       const orQuery = words.join(' OR ');
-      const where = categoryId ? ' AND b.category_id = @categoryId ' : '';
+      const conditions: string[] = [];
+      if (categoryId) conditions.push('b.category_id = @categoryId');
+      if (sourceType) conditions.push(buildSourceTypePredicate(sourceType, 'b'));
+      const where = conditions.length ? ` AND ${conditions.join(' AND ')} ` : '';
       
       const results = client
         .prepare(
@@ -238,7 +250,10 @@ function trySearchStrategies(
       const items = mapRows(result.results);
 
       // Get total count
-      const where = categoryId ? ' AND b.category_id = @categoryId ' : '';
+      const conditions: string[] = [];
+      if (categoryId) conditions.push('b.category_id = @categoryId');
+      if (sourceType) conditions.push(buildSourceTypePredicate(sourceType, 'b'));
+      const where = conditions.length ? ` AND ${conditions.join(' AND ')} ` : '';
       const strategyQuery = result.strategy === 'prefix' 
         ? buildFtsQuery(query)
         : result.strategy === 'and'
@@ -259,7 +274,10 @@ function trySearchStrategies(
   }
 
   const likeNeedle = `%${query.trim().toLowerCase()}%`;
-  const metadataWhere = categoryId ? ' AND b.category_id = @categoryId ' : '';
+  const metadataConditions: string[] = [];
+  if (categoryId) metadataConditions.push('b.category_id = @categoryId');
+  if (sourceType) metadataConditions.push(buildSourceTypePredicate(sourceType, 'b'));
+  const metadataWhere = metadataConditions.length ? ` AND ${metadataConditions.join(' AND ')} ` : '';
   const metadataResults = client
     .prepare(
       `SELECT
@@ -337,6 +355,7 @@ export function executeKeywordSearch(params: KeywordSearchParams): { items: Sear
     client,
     params.query,
     params.categoryId,
+    params.sourceType,
     params.limit,
     params.offset
   );

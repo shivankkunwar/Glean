@@ -353,7 +353,7 @@ const total = ref(0);
 const viewMode = ref<'timeline' | 'categories'>('timeline');
 
 function setViewMode(mode: 'timeline' | 'categories') {
-  if (mode === 'timeline' && activeFilter.value !== 'all') {
+  if (activeFilter.value !== 'all') {
     clearFilter();
   }
   viewMode.value = mode;
@@ -494,9 +494,6 @@ const inputIconClass = computed(() => {
 // ── Filtered cards ────────────────────────────────────────────────────
 const filteredCards = computed(() => {
   let list = cards.value;
-  if (activeFilter.value !== 'all') {
-    list = list.filter(c => cardType(c) === activeFilter.value);
-  }
   if (activeTag.value) {
     list = list.filter(c => c.tags?.some(t => t.name === activeTag.value));
   }
@@ -746,6 +743,9 @@ async function fetchPage(pageNum: number) {
     page: pageNum, limit: 24,
     ...(categoryId.value ? { categoryId: categoryId.value } : {})
   };
+  if (activeFilter.value !== 'all') {
+    params.sourceType = activeFilter.value;
+  }
   const rawQuery = searchQuery.value;
   const query = (rawQuery && typeof rawQuery === 'string' ? rawQuery.trim() : '').replace(/\s+/g, ' ');
   if (query.length > 0) {
@@ -823,7 +823,7 @@ function relativeTime(iso?: string): string {
 // (onMounted already calls loadInitial directly).
 const mountedRef = ref(false);
 watch(
-  () => [route.query.q, route.query.tag, route.query.categoryId] as const,
+  () => [route.query.q, route.query.tag, route.query.categoryId, route.query.filter] as const,
   () => { if (mountedRef.value) void loadInitial(); },
 );
 

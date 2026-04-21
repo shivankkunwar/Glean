@@ -6,6 +6,7 @@ import { executeKeywordSearch, filterByCategoryId } from '../utils/search';
 import { MAX_PAGE_LIMIT, MAX_EMBEDDING_RESULTS, MIN_SIMILARITY_SCORE } from '../utils/constants';
 import { getCookie } from 'h3';
 import { isSessionValid, AUTH_COOKIE } from '../utils/auth';
+import { filterBySourceType, getValidatedSourceType } from '../utils/source-type';
 
 function reciprocalRankFusion(
   ftsRanks: Array<{ id: number; rank: number }>,
@@ -34,7 +35,13 @@ function reciprocalRankFusion(
   return fused.sort((a, b) => b.score - a.score);
 }
 
-async function performSemanticSearch(q: string, categoryId: number | null, limit: number, offset: number) {
+async function performSemanticSearch(
+  q: string,
+  categoryId: number | null,
+  sourceType: ReturnType<typeof getValidatedSourceType>,
+  limit: number,
+  offset: number
+) {
   const { client } = getDb();
   const provider = resolveProvider('embed', {
     sourceType: 'generic',
@@ -46,18 +53,19 @@ async function performSemanticSearch(q: string, categoryId: number | null, limit
   const embedResult = await provider.embed([q]);
 
   if (embedResult.skipped || !embedResult.vectors.length) {
-    return executeKeywordSearch({ query: q, categoryId: categoryId ?? undefined, limit, offset });
+    return executeKeywordSearch({ query: q, categoryId: categoryId ?? undefined, sourceType: sourceType ?? undefined, limit, offset });
   }
 
   // Fix vectors possibly undefined
   const queryVector = embedResult.vectors[0];
   if (!queryVector) {
-    return executeKeywordSearch({ query: q, categoryId: categoryId ?? undefined, limit, offset });
+    return executeKeywordSearch({ query: q, categoryId: categoryId ?? undefined, sourceType: sourceType ?? undefined, limit, offset });
   }
 
   const vectorResults = findNearestNeighbors(queryVector, MAX_EMBEDDING_RESULTS, MIN_SIMILARITY_SCORE);
 
   let filteredResults = categoryId ? filterByCategoryId(vectorResults, categoryId) : vectorResults;
+  filteredResults = sourceType ? filterBySourceType(filteredResults, sourceType) : filteredResults;
   const paginated = filteredResults.slice(offset, offset + limit);
 
   const items = paginated.map((result) => {
@@ -106,7 +114,13 @@ async function performSemanticSearch(q: string, categoryId: number | null, limit
   return { items, total: filteredResults.length };
 }
 
-async function performHybridSearch(q: string, categoryId: number | null, limit: number, offset: number) {
+async function performHybridSearch(
+  q: string,
+  categoryId: number | null,
+  sourceType: ReturnType<typeof getValidatedSourceType>,
+  limit: number,
+  offset: number
+) {
   const { client } = getDb();
   const provider = resolveProvider('embed', {
     sourceType: 'generic',
@@ -122,11 +136,12 @@ async function performHybridSearch(q: string, categoryId: number | null, limit: 
     vectorResults = findNearestNeighbors(embedResult.vectors[0], MAX_EMBEDDING_RESULTS, MIN_SIMILARITY_SCORE);
   }
 
-  const { items: ftsItems } = executeKeywordSearch({ query: q, categoryId: categoryId ?? undefined, limit: 50, offset: 0 });
+  const { items: ftsItems } = executeKeywordSearch({ query: q, categoryId: categoryId ?? undefined, sourceType: sourceType ?? undefined, limit: 50, offset: 0 });
   const ftsRanks = ftsItems.map((item, index) => ({ id: item.id, rank: index }));
 
   const filteredVectorResults = categoryId ? filterByCategoryId(vectorResults, categoryId) : vectorResults;
-  const vecScores = filteredVectorResults.map((r) => ({ bookmarkId: r.bookmarkId, score: r.score }));
+  const sourceFilteredVectorResults = sourceType ? filterBySourceType(filteredVectorResults, sourceType) : filteredVectorResults;
+  const vecScores = sourceFilteredVectorResults.map((r) => ({ bookmarkId: r.bookmarkId, score: r.score }));
 
   const fused = reciprocalRankFusion(ftsRanks, vecScores, 60);
   const paginated = fused.slice(offset, offset + limit);
@@ -192,6 +207,7 @@ export default defineEventHandler(async (event) => {
   const offset = (Math.max(page, 1) - 1) * limit;
   const categoryId = Number(query.categoryId ?? NaN);
   const validCategoryId = Number.isFinite(categoryId) ? categoryId : null;
+  const sourceType = getValidatedSourceType(query);
 
   if (!q) {
     return { items: [], total: 0, q: '', mode };
@@ -199,23 +215,23 @@ export default defineEventHandler(async (event) => {
 
   try {
     if (mode === 'keyword') {
-      const { items, total, strategy } = executeKeywordSearch({ query: q, categoryId: validCategoryId ?? undefined, limit, offset });
+      const { items, total, strategy } = executeKeywordSearch({ query: q, categoryId: validCategoryId ?? undefined, sourceType: sourceType ?? undefined, limit, offset });
       return { items, total, q, mode, page, limit, strategy };
     }
 
     if (mode === 'semantic') {
-      const { items, total } = await performSemanticSearch(q, validCategoryId, limit, offset);
+      const { items, total } = await performSemanticSearch(q, validCategoryId, sourceType, limit, offset);
       return { items, total, q, mode, page, limit };
     }
 
     if (mode === 'hybrid') {
-      const { items, total } = await performHybridSearch(q, validCategoryId, limit, offset);
+      const { items, total } = await performHybridSearch(q, validCategoryId, sourceType, limit, offset);
       return { items, total, q, mode, page, limit };
     }
 
     return { items: [], total: 0, q, mode, page, limit };
   } catch (error) {
-    const { items, total, strategy } = executeKeywordSearch({ query: q, categoryId: validCategoryId ?? undefined, limit, offset });
+    const { items, total, strategy } = executeKeywordSearch({ query: q, categoryId: validCategoryId ?? undefined, sourceType: sourceType ?? undefined, limit, offset });
     return {
       items,
       total,

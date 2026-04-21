@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery } from 'h3';
 import { getDb } from '../utils/db';
 import { getValidatedPage, getValidatedLimit, getValidatedCategoryId } from '../utils/validation';
 import { MAX_PAGE_LIMIT } from '../utils/constants';
+import { buildSourceTypePredicate, getValidatedSourceType } from '../utils/source-type';
 
 type Row = {
   id: number;
@@ -33,6 +34,7 @@ export default defineEventHandler((event) => {
   const limit = getValidatedLimit(query, MAX_PAGE_LIMIT);
   const offset = (page - 1) * limit;
   const categoryId = getValidatedCategoryId(query);
+  const sourceType = getValidatedSourceType(query);
 
   const baseSelect = `
     SELECT
@@ -61,11 +63,11 @@ export default defineEventHandler((event) => {
   `;
 
   const pinnedOnly = query.pinned === 'true';
-
-  let filter = categoryId ? ' WHERE b.category_id = @categoryId ' : '';
-  if (pinnedOnly) {
-    filter = filter ? ' WHERE b.is_pinned = 1 ' : ' WHERE b.is_pinned = 1 ';
-  }
+  const conditions: string[] = [];
+  if (categoryId) conditions.push('b.category_id = @categoryId');
+  if (sourceType) conditions.push(buildSourceTypePredicate(sourceType, 'b'));
+  if (pinnedOnly) conditions.push('b.is_pinned = 1');
+  const filter = conditions.length ? ` WHERE ${conditions.join(' AND ')} ` : '';
 
   const rows = client
     .prepare(`${baseSelect}${filter} ORDER BY b.is_pinned DESC, b.created_at DESC LIMIT @limit OFFSET @offset`)
