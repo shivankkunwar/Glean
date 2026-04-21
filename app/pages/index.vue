@@ -130,6 +130,7 @@
                         :alt="preview.title || ''"
                         class="folder-page-img"
                         loading="lazy"
+                        draggable="false"
                       />
                       <div v-else class="folder-page-placeholder" :style="{ background: preview.gradient }">
                         <i :class="['ph', bucket.icon]" />
@@ -1527,6 +1528,7 @@ onBeforeUnmount(() => {
 
 .folder-page-img {
   width: 100%; height: 100%; object-fit: cover; display: block;
+  user-select: none; -webkit-user-drag: none;
 }
 .folder-page-placeholder {
   width: 100%; height: 100%;
