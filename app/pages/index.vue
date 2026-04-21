@@ -112,28 +112,51 @@
               :style="{ '--bucket-delay': `${bi * 55}ms` }"
               @click="enterBucket(bucket.type)"
             >
-              <div class="bucket-deck">
-                <div
-                  v-for="preview in bucket.previews"
-                  :key="preview.id"
-                  class="deck-card"
-                  :style="{ background: preview.ogImage ? 'transparent' : preview.gradient }"
-                >
-                  <img
-                    v-if="preview.ogImage"
-                    :src="preview.ogImage"
-                    :alt="preview.title || ''"
-                    class="deck-card-img"
-                    loading="lazy"
-                  />
-                  <div v-else class="deck-card-placeholder">
-                    <i :class="['ph', bucket.icon]" />
+              <!-- 3D folder wrapper -->
+              <div class="folder-container">
+                <div class="folder-wrapper">
+                  <!-- Inner folder body (dark background with inset glow) -->
+                  <div class="folder-body">
+                    <!-- Stacked page previews -->
+                    <div
+                      v-for="(preview, pi) in bucket.previews"
+                      :key="preview.id"
+                      class="folder-page"
+                      :class="`folder-page--${pi}`"
+                    >
+                      <img
+                        v-if="preview.ogImage"
+                        :src="preview.ogImage"
+                        :alt="preview.title || ''"
+                        class="folder-page-img"
+                        loading="lazy"
+                      />
+                      <div v-else class="folder-page-placeholder" :style="{ background: preview.gradient }">
+                        <i :class="['ph', bucket.icon]" />
+                      </div>
+                    </div>
+                    <!-- Empty state page -->
+                    <div v-if="bucket.previews.length === 0" class="folder-page folder-page--empty">
+                      <i :class="['ph', bucket.icon]" />
+                    </div>
+                  </div>
+
+                  <!-- Folder front cover (SVG shape with tab) -->
+                  <div class="folder-cover">
+                    <svg class="folder-cover-svg" viewBox="0 0 236 122" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M104.615 0.350494L33.1297 0.838776C32.7542 0.841362 32.3825 0.881463 32.032 0.918854C31.6754 0.956907 31.3392 0.992086 31.0057 0.992096H31.0047C30.6871 0.99235 30.3673 0.962051 30.0272 0.929596C29.6927 0.897686 29.3384 0.863802 28.9803 0.866119L13.2693 0.967682H13.2527L13.2352 0.969635C13.1239 0.981406 13.0121 0.986674 12.9002 0.986237H9.91388C8.33299 0.958599 6.76052 1.22345 5.27423 1.76651H5.27325C4.33579 2.11246 3.48761 2.66213 2.7879 3.37393L2.49689 3.68839L2.492 3.69424C1.62667 4.73882 1.00023 5.96217 0.656067 7.27725C0.653324 7.28773 0.654065 7.29886 0.652161 7.30948C0.3098 8.62705 0.257231 10.0048 0.499817 11.3446L12.2147 114.399L12.2156 114.411L12.2176 114.423C12.6046 116.568 13.7287 118.508 15.3934 119.902C17.058 121.297 19.1572 122.056 21.3231 122.049V122.05H215.379C217.76 122.02 220.064 121.192 221.926 119.698V119.697C223.657 118.384 224.857 116.485 225.305 114.35L225.307 114.339L235.914 53.3798L235.968 53.1093L235.97 53.0985L235.971 53.0888C236.134 51.8978 236.044 50.685 235.705 49.5321C235.307 48.1669 234.63 46.9005 233.717 45.8144L233.383 45.4296C232.58 44.5553 231.614 43.8449 230.539 43.3398C229.311 42.7628 227.971 42.4685 226.616 42.4774H146.746C144.063 42.4705 141.423 41.8004 139.056 40.5263C136.691 39.2522 134.671 37.4127 133.175 35.1689L113.548 5.05948L113.544 5.05362L113.539 5.04776C112.545 3.65165 111.238 2.51062 109.722 1.72061C108.266 0.886502 106.627 0.422235 104.952 0.365143V0.364166L104.633 0.350494H104.615Z"
+                        fill="var(--folder-fill)"
+                        fill-opacity="0.35"
+                        stroke="var(--folder-stroke)"
+                        stroke-width="0.7"
+                      />
+                    </svg>
                   </div>
                 </div>
-                <div v-if="bucket.previews.length === 0" class="deck-card deck-card--empty">
-                  <i :class="['ph', bucket.icon]" />
-                </div>
               </div>
+
+              <!-- Bucket label bar -->
               <div class="bucket-meta">
                 <div class="bucket-label-row">
                   <span class="bucket-icon-wrap">
@@ -1328,87 +1351,172 @@ onBeforeUnmount(() => {
   .buckets-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* Bucket card */
+/* Bucket card — 3D folder interaction */
 .bucket-card {
   display: flex; flex-direction: column;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  background: transparent;
+  border: none;
   border-radius: 20px;
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   text-align: left;
-  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 280ms cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 200ms;
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
   animation: bucket-enter 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: var(--bucket-delay, 0ms);
   will-change: transform;
+  --folder-fill: oklch(24% 0.012 58);
+  --folder-stroke: oklch(45% 0.012 58 / 0.25);
 }
-.bucket-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--border-default);
-}
-.bucket-card:hover .deck-card:nth-child(1) { transform: rotate(-10deg) translateX(-10px) translateY(-14px); }
-.bucket-card:hover .deck-card:nth-child(2) { transform: rotate(7deg) translateX(10px) translateY(-10px); }
-.bucket-card:hover .deck-card:nth-child(3) { transform: rotate(-1deg) translateY(0px); }
-.bucket-card:hover .bucket-cta-arrow { transform: translateX(3px); }
-.bucket-card:active { transform: translateY(-2px); }
+.bucket-card:active { transform: scale(0.97); }
 
 @keyframes bucket-enter {
   from { opacity: 0; transform: translateY(18px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Stacked deck */
-.bucket-deck {
-  position: relative;
-  height: 196px;
-  background: var(--bg-raised);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-}
-.deck-card {
-  position: absolute;
-  width: 118px; height: 150px;
-  border-radius: 12px;
-  border: 1.5px solid var(--border-subtle);
-  overflow: hidden;
-  box-shadow: 0 4px 16px oklch(0 0 0 / 0.12);
-  transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
-}
-/* stack positions: bottom to top */
-.deck-card:nth-child(1) {
-  transform: rotate(-7deg) translateX(-6px) translateY(4px);
-  z-index: 1; opacity: 0.72;
-}
-.deck-card:nth-child(2) {
-  transform: rotate(4deg) translateX(8px) translateY(-2px);
-  z-index: 2; opacity: 0.86;
-}
-.deck-card:nth-child(3) {
-  transform: rotate(-1deg);
-  z-index: 3; opacity: 1;
-}
-.deck-card-img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
-}
-.deck-card-placeholder {
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-}
-.deck-card-placeholder i { font-size: 28px; opacity: 0.25; color: var(--text-primary); }
-.deck-card--empty {
-  background: var(--bg-raised);
-  border-style: dashed;
+/* ── 3D Folder Layout ────────────────────────────────────────────── */
+/* The top section containing the folder needs padding for animation pop-out */
+.folder-container {
+  padding: 40px 16px 12px;
+  background: var(--bg-surface);
+  display: flex; justify-content: center; align-items: flex-end;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-/* Bucket metadata */
+/* 3D Folder wrapper */
+.folder-wrapper {
+  position: relative;
+  width: 90%; max-width: 260px;
+  aspect-ratio: 16 / 10;
+  perspective: 700px;
+}
+
+/* Inner folder body — dark background with inset glow */
+.folder-body {
+  position: absolute;
+  inset: 0;
+  width: 90%; height: 100%;
+  margin: 0 auto;
+  border-radius: 12px;
+  background: oklch(16% 0.014 58);
+  box-shadow: 0px 0px 16px 16px oklch(30% 0.014 58 / 0.30) inset;
+  display: flex; align-items: center; justify-content: center;
+  overflow: visible;
+}
+
+/* Stacked page previews inside folder */
+.folder-page {
+  position: absolute;
+  width: 56%;   /* Extremely prominent relative to folder */
+  aspect-ratio: 4 / 5;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px oklch(0 0 0 / 0.25);
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+  bottom: 12px; /* Anchor pages near the bottom so they rise up */
+}
+
+/* Page positions at rest — tight stack */
+.folder-page--0 {
+  transform: rotate(-3deg) translateX(-18%) translateY(4px);
+  z-index: 1; opacity: 0.8;
+}
+.folder-page--1 {
+  transform: rotate(0deg) translateX(0px) translateY(0px);
+  z-index: 2; opacity: 0.95;
+}
+.folder-page--2 {
+  transform: rotate(4deg) translateX(18%) translateY(4px);
+  z-index: 1; opacity: 0.8;
+}
+
+/* Hover: pages fan out dramatically upwards */
+.bucket-card:hover .folder-page--0 {
+  transform: rotate(-10deg) translateX(-45%) translateY(-56px);
+  opacity: 1;
+}
+.bucket-card:hover .folder-page--1 {
+  transform: rotate(1deg) translateX(0px) translateY(-72px);
+  opacity: 1;
+}
+.bucket-card:hover .folder-page--2 {
+  transform: rotate(12deg) translateX(45%) translateY(-50px);
+  opacity: 1;
+}
+
+.folder-page-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.folder-page-placeholder {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: linear-gradient(160deg, oklch(90% 0.015 70), oklch(85% 0.018 65));
+}
+.folder-page-placeholder::before {
+  content: '';
+  display: block;
+  width: 100%; height: 4px;
+  background: oklch(76% 0.02 68);
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+.folder-page-placeholder i {
+  display: none; /* hide icon — paper lines are the visual */
+}
+/* Paper ruled lines via box-shadow stacking */
+.folder-page-placeholder::after {
+  content: '';
+  flex: 1;
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      oklch(76% 0.02 68) 0px,
+      oklch(76% 0.02 68) 3px,
+      transparent 3px,
+      transparent 9px
+    );
+  border-radius: 2px;
+  opacity: 0.8;
+}
+.folder-page--empty {
+  width: 100px; aspect-ratio: 3/4;
+  background: oklch(22% 0.01 58);
+  border: 1.5px dashed oklch(45% 0.012 58 / 0.35);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1;
+}
+.folder-page--empty i { font-size: 28px; opacity: 0.2; color: var(--text-muted); }
+
+/* Folder front cover — tilts open on hover */
+.folder-cover {
+  position: absolute;
+  left: -1px; right: -1px; bottom: -1px;
+  height: 80%;
+  z-index: 20;
+  transform-origin: bottom center;
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+  pointer-events: none;
+  display: flex; justify-content: center; align-items: center;
+}
+.bucket-card:hover .folder-cover {
+  transform: rotateX(-38deg);
+}
+.folder-cover-svg {
+  width: 100%; height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 -2px 8px oklch(0 0 0 / 0.08));
+}
+
+/* Bucket metadata bar (below folder) */
 .bucket-meta {
   padding: 14px 16px 16px;
   display: flex; flex-direction: column; gap: 8px;
-  border-top: 1px solid var(--border-subtle);
 }
 .bucket-label-row {
   display: flex; align-items: center; gap: 8px;
@@ -1439,6 +1547,7 @@ onBeforeUnmount(() => {
   transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-block;
 }
+.bucket-card:hover .bucket-cta-arrow { transform: translateX(3px); }
 
 /* Skeleton and empty */
 .buckets-skeleton {
@@ -1447,7 +1556,7 @@ onBeforeUnmount(() => {
   gap: 20px;
 }
 .bucket-skeleton-card {
-  height: 256px; border-radius: 20px;
+  aspect-ratio: 320 / 280; border-radius: 20px;
   background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
   animation: shimmer 1.6s ease-in-out infinite;
@@ -1485,8 +1594,7 @@ onBeforeUnmount(() => {
 
   /* Buckets */
   .buckets-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .bucket-deck { height: 156px; }
-  .deck-card { width: 96px; height: 120px; border-radius: 10px; }
+  .folder-container { padding: 32px 12px 12px; }
 
   /* Grid — stable 2-col layout */
   .masonry-grid { gap: 12px; }
