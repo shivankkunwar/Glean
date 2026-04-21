@@ -38,45 +38,47 @@
         <span class="url-save-hint">Click "Save link" to save →</span>
       </div>
 
-      <!-- Contextual row: public pill OR quick chips, never both -->
+      <!-- Public read-only pill -->
       <div v-if="!isAuthenticated" class="public-pill">
         <i class="ph ph-eye" />
         Read-only —
         <NuxtLink to="/login" class="public-pill-link">Sign in to save</NuxtLink>
       </div>
-      <div v-else class="quick-actions" :class="{ visible: (isFocused || !inputVal) && !urlPreview }">
-        <button class="quick-action-chip" @click.prevent="openTray">
-          <i class="ph ph-note-pencil" /> Note
+    </div>
+
+    <!-- VIEW MODE SWITCHER -->
+    <div class="view-switcher-section">
+      <div class="view-switcher" role="tablist" aria-label="View mode">
+        <div
+          class="view-switcher-pill"
+          :style="{ transform: `translateX(${viewMode === 'categories' ? '100%' : '0%'})` }"
+          aria-hidden="true"
+        />
+        <button
+          class="view-switcher-btn"
+          :class="{ active: viewMode === 'timeline' }"
+          role="tab"
+          :aria-selected="viewMode === 'timeline'"
+          @click="setViewMode('timeline')"
+        >
+          <i class="ph ph-squares-four" />
+          <span>Timeline</span>
         </button>
-        <button class="quick-action-chip" @click.prevent="pasteYouTube">
-          <i class="ph ph-youtube-logo" /> YouTube
-        </button>
-        <button class="quick-action-chip" @click.prevent="smartInputEl?.focus()">
-          <i class="ph ph-link" /> Link
+        <button
+          class="view-switcher-btn"
+          :class="{ active: viewMode === 'categories' }"
+          role="tab"
+          :aria-selected="viewMode === 'categories'"
+          @click="setViewMode('categories')"
+        >
+          <i class="ph ph-stack" />
+          <span>Categories</span>
         </button>
       </div>
     </div>
 
-    <!-- FILTER PILLS -->
-    <nav class="filter-section" role="tablist">
-      <div class="filter-pills">
-        <button
-          v-for="f in filters"
-          :key="f.value"
-          class="filter-pill"
-          :class="{ active: activeFilter === f.value }"
-          role="tab"
-          :aria-selected="activeFilter === f.value"
-          @click="setFilter(f.value)"
-        >
-          <i :class="['ph', f.icon]" />
-          <span>{{ f.label }}</span>
-        </button>
-      </div>
-    </nav>
-
-    <!-- RESULTS INFO -->
-    <div class="results-info" :class="{ 'is-visible': searchQuery || activeTag }">
+    <!-- RESULTS INFO (timeline only) -->
+    <div v-if="viewMode === 'timeline'" class="results-info" :class="{ 'is-visible': searchQuery || activeTag || activeFilter !== 'all' }">
       <template v-if="searchQuery">
         Found <strong>{{ filteredCards.length }}</strong> results for "{{ searchQuery }}"
       </template>
@@ -85,10 +87,75 @@
         <NuxtLink to="/" class="active-tag">#{{ activeTag }}</NuxtLink>
         <NuxtLink to="/" class="clear-filter">Clear</NuxtLink>
       </template>
+      <template v-else-if="activeFilter !== 'all'">
+        Showing <strong>{{ getFilterLabel(activeFilter) }}</strong>
+        <button class="clear-filter" @click="clearFilter">Clear</button>
+      </template>
     </div>
 
-    <!-- EMPTY STATE -->
-    <section v-if="!loading && filteredCards.length === 0" class="empty-state">
+    <!-- CATEGORIES VIEW -->
+    <Transition name="view-switch" mode="out-in">
+      <section v-if="viewMode === 'categories'" key="categories" class="categories-view" aria-label="Categories">
+        <div class="container">
+          <div v-if="loading && cards.length === 0" class="buckets-skeleton">
+            <div v-for="n in 4" :key="n" class="bucket-skeleton-card" />
+          </div>
+          <div v-else-if="sourceBuckets.length === 0" class="buckets-empty">
+            <i class="ph ph-stack" />
+            <p>Save some links to see them grouped here.</p>
+          </div>
+          <div v-else class="buckets-grid">
+            <button
+              v-for="(bucket, bi) in sourceBuckets"
+              :key="bucket.type"
+              class="bucket-card"
+              :style="{ '--bucket-delay': `${bi * 55}ms` }"
+              @click="enterBucket(bucket.type)"
+            >
+              <div class="bucket-deck">
+                <div
+                  v-for="preview in bucket.previews"
+                  :key="preview.id"
+                  class="deck-card"
+                  :style="{ background: preview.ogImage ? 'transparent' : preview.gradient }"
+                >
+                  <img
+                    v-if="preview.ogImage"
+                    :src="preview.ogImage"
+                    :alt="preview.title || ''"
+                    class="deck-card-img"
+                    loading="lazy"
+                  />
+                  <div v-else class="deck-card-placeholder">
+                    <i :class="['ph', bucket.icon]" />
+                  </div>
+                </div>
+                <div v-if="bucket.previews.length === 0" class="deck-card deck-card--empty">
+                  <i :class="['ph', bucket.icon]" />
+                </div>
+              </div>
+              <div class="bucket-meta">
+                <div class="bucket-label-row">
+                  <span class="bucket-icon-wrap">
+                    <i :class="['ph ph-fill', bucket.icon]" />
+                  </span>
+                  <span class="bucket-label">{{ bucket.label }}</span>
+                </div>
+                <div class="bucket-bottom-row">
+                  <span class="bucket-count">{{ bucket.count }} {{ bucket.count === 1 ? 'item' : 'items' }}</span>
+                  <span class="bucket-cta">
+                    Browse <i class="ph ph-arrow-right bucket-cta-arrow" />
+                  </span>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </section>
+    </Transition>
+
+    <!-- EMPTY STATE (timeline) -->
+    <section v-if="viewMode === 'timeline' && !loading && filteredCards.length === 0" class="empty-state">
       <div class="empty-illustration">
         <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="60" cy="60" r="50" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.6"/>
@@ -101,8 +168,9 @@
       <p>Paste any link above or type a quick note — it saves instantly.</p>
     </section>
 
-    <!-- MASONRY GRID -->
-    <div class="container">
+    <!-- MASONRY GRID (timeline only) -->
+    <Transition name="view-switch" mode="out-in">
+    <div v-if="viewMode === 'timeline'" key="timeline" class="container">
       <div v-if="loading && cards.length === 0" class="masonry-grid" :class="`cols-${columnCount}`">
         <div v-for="n in columnCount" :key="n" class="masonry-column">
           <div v-for="i in Math.ceil(8 / columnCount)" :key="i" class="card card-skeleton" />
@@ -227,6 +295,7 @@
       <p v-if="!hasMore && cards.length > 0 && !loading" class="end-of-list">You've seen everything ✓</p>
       <p v-if="loadingMore" class="loading-more"><i class="ph ph-spinner-gap spin" /> Loading more…</p>
     </div>
+    </Transition>
 
     <!-- FAB -->
     <div class="fab-wrap" v-if="isAuthenticated">
@@ -281,6 +350,22 @@ const saving = ref(false);
 const reprocessing = ref(false);
 const page = ref(1);
 const total = ref(0);
+const viewMode = ref<'timeline' | 'categories'>('timeline');
+
+function setViewMode(mode: 'timeline' | 'categories') {
+  if (mode === 'timeline' && activeFilter.value !== 'all') {
+    clearFilter();
+  }
+  viewMode.value = mode;
+}
+
+function enterBucket(type: string) {
+  // Navigate to timeline filtered by source type
+  navigateTo({ path: '/', query: { ...route.query, filter: type } });
+  viewMode.value = 'timeline';
+  activeFilter.value = type;
+}
+
 const sentinel = ref<HTMLElement | null>(null);
 const smartInputEl = ref<HTMLInputElement | null>(null);
 const trayInputEl = ref<HTMLTextAreaElement | null>(null);
@@ -296,7 +381,14 @@ const trayOpen = ref(false);
 const trayText = ref('');
 const optimisticNotes = ref<OptNote[]>([]);
 const readingCard = ref<BookmarkCard | null>(null);
-const activeFilter = ref('all');
+
+const activeFilter = ref((route.query.filter as string) || 'all');
+watch(
+  () => route.query.filter,
+  (newFilter) => {
+    activeFilter.value = (newFilter as string) || 'all';
+  }
+);
 
 const hasMore = computed(() => cards.value.length < total.value);
 const categoryId = computed(() => {
@@ -412,6 +504,44 @@ const filteredCards = computed(() => {
 });
 
 function setFilter(val: string) { activeFilter.value = val; }
+
+function getFilterLabel(val: string) {
+  const f = SOURCE_TYPES.find(st => st.type === val);
+  return f ? f.label : val;
+}
+
+function clearFilter() {
+  activeFilter.value = 'all';
+  const query = { ...route.query };
+  delete query.filter;
+  navigateTo({ path: '/', query });
+}
+
+// ── Source-type buckets for categories view ──────────────────────────
+const SOURCE_TYPES = [
+  { type: 'article', label: 'Articles',  icon: 'ph-article'      },
+  { type: 'video',   label: 'Videos',    icon: 'ph-youtube-logo'  },
+  { type: 'note',    label: 'Notes',     icon: 'ph-note-pencil'   },
+  { type: 'tweet',   label: 'Tweets',    icon: 'ph-x-logo'        },
+  { type: 'github',  label: 'GitHub',    icon: 'ph-github-logo'   },
+  { type: 'book',    label: 'Books',     icon: 'ph-book-open'     },
+  { type: 'product', label: 'Products',  icon: 'ph-shopping-bag'  },
+] as const;
+
+const sourceBuckets = computed(() => {
+  return SOURCE_TYPES
+    .map(st => {
+      const matches = cards.value.filter(c => cardType(c) === st.type);
+      const previews = matches.slice(0, 3).map((c, i) => ({
+        id: c.id,
+        title: c.title,
+        ogImage: c.ogImage,
+        gradient: gradients[c.id % gradients.length] ?? gradients[i % gradients.length]!,
+      }));
+      return { ...st, count: matches.length, previews };
+    })
+    .filter(b => b.count > 0);
+});
 
 // ── Stable column assignment for masonry grid ─────────────────────────
 const columnCount = computed(() => {
@@ -645,7 +775,7 @@ async function loadMore() {
 function setupObserver() {
   if (!sentinel.value) return;
   observer = new IntersectionObserver(entries => {
-    if (entries[0]?.isIntersecting && hasMore.value && !loadingMore.value) void loadMore();
+    if (entries[0]?.isIntersecting && hasMore.value && !loadingMore.value && viewMode.value === 'timeline') void loadMore();
   }, { rootMargin: '200px' });
   observer.observe(sentinel.value);
 }
@@ -834,60 +964,44 @@ onBeforeUnmount(() => {
 }
 .public-pill-link { color: var(--color-accent); font-weight: 500; }
 
-.quick-actions {
-  display: flex; align-items: center; justify-content: center;
-  gap: 6px; flex-wrap: wrap; padding-top: 6px;
-  opacity: 0; max-height: 0; overflow: hidden;
-  transition: opacity var(--d-base) var(--ease-out), max-height var(--d-base) var(--ease-out);
-}
-.quick-actions.visible {
-  opacity: 1; max-height: 60px;
-}
-.quick-action-chip {
-  padding: 5px 12px; border-radius: 100px;
-  border: 1.5px solid var(--border-default);
-  font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500;
-  display: flex; align-items: center; gap: 4px;
-  transition: border-color var(--d-fast), color var(--d-fast), background-color var(--d-fast), transform var(--d-instant);
-}
-.quick-action-chip:hover { border-color: var(--text-secondary); color: var(--text-primary); background: var(--bg-surface); border-style: solid; }
-.quick-action-chip:active { transform: scale(0.96); }
-
-/* ── Filter Pills — compact icon+label strip ───────────────────────── */
-.filter-section {
+/* ── View Mode Switcher ────────────────────────────────────────────── */
+.view-switcher-section {
   display: flex; justify-content: center;
   padding: 0 48px 32px;
 }
-.filter-section,
-.filter-pills {
-  overflow-x: auto;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.filter-section::-webkit-scrollbar,
-.filter-pills::-webkit-scrollbar {
-  display: none;
-}
-.filter-pills {
-  display: inline-flex; gap: 4px; white-space: nowrap;
+.view-switcher {
+  position: relative;
+  display: inline-flex;
   padding: 3px;
-  background: var(--bg-raised); border-radius: 100px;
+  background: var(--bg-raised);
+  border-radius: 100px;
   border: 1px solid var(--border-subtle);
+  gap: 0;
 }
-.filter-pill {
-  padding: 6px 14px; border-radius: 100px; border: none;
-  font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500;
+.view-switcher-pill {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: calc(50% - 3px);
+  height: calc(100% - 6px);
+  background: var(--bg-surface);
+  border-radius: 100px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.view-switcher-btn {
+  position: relative; z-index: 1;
+  padding: 7px 20px; border-radius: 100px; border: none;
+  font-size: var(--text-xs); font-weight: 600;
   display: flex; align-items: center; gap: 5px;
-  transition: background-color var(--d-fast) var(--ease-out), color var(--d-fast), box-shadow var(--d-fast), transform var(--d-instant);
+  color: var(--text-tertiary); background: transparent;
+  transition: color 200ms var(--ease-out), transform var(--d-instant);
+  white-space: nowrap;
 }
-.filter-pill i { font-size: 12px; opacity: 0.7; }
-.filter-pill:hover { color: var(--text-primary); background: var(--bg-surface); }
-.filter-pill.active {
-  background: var(--color-accent); color: var(--text-inverse);
-  box-shadow: var(--shadow-accent);
-}
-.filter-pill.active i { opacity: 1; }
-.filter-pill:active { transform: scale(0.96); }
+.view-switcher-btn i { font-size: 13px; transition: opacity 200ms; opacity: 0.6; }
+.view-switcher-btn.active { color: var(--text-primary); }
+.view-switcher-btn.active i { opacity: 1; }
+.view-switcher-btn:active { transform: scale(0.97); }
 
 /* ── Results / Empty ─────────────────────────────────────────────── */
 .results-info { padding: 0 48px 24px; font-size: var(--text-sm); color: var(--text-secondary); display: none; }
@@ -902,6 +1016,7 @@ onBeforeUnmount(() => {
 .clear-filter {
   margin-left: 12px; color: var(--text-muted);
   font-size: var(--text-xs); text-decoration: underline;
+  background: transparent; border: none; cursor: pointer; padding: 0; font-family: inherit;
 }
 .clear-filter:hover { color: var(--text-secondary); }
 
@@ -1188,6 +1303,167 @@ onBeforeUnmount(() => {
 .spin { display: inline-block; animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
+/* ── View switch transition ──────────────────────────────────────── */
+.view-switch-enter-active {
+  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1), transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.view-switch-leave-active {
+  transition: opacity 180ms cubic-bezier(0.4, 0, 1, 1), transform 180ms cubic-bezier(0.4, 0, 1, 1);
+  position: absolute; width: 100%;
+}
+.view-switch-enter-from { opacity: 0; transform: translateY(8px); }
+.view-switch-leave-to   { opacity: 0; transform: translateY(-6px); }
+
+/* ── Categories View ─────────────────────────────────────────────── */
+.categories-view { padding-bottom: 80px; padding-top: 4px; }
+.buckets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+@media (min-width: 900px) {
+  .buckets-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (min-width: 1200px) {
+  .buckets-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Bucket card */
+.bucket-card {
+  display: flex; flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 280ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 200ms;
+  animation: bucket-enter 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--bucket-delay, 0ms);
+  will-change: transform;
+}
+.bucket-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-default);
+}
+.bucket-card:hover .deck-card:nth-child(1) { transform: rotate(-10deg) translateX(-10px) translateY(-14px); }
+.bucket-card:hover .deck-card:nth-child(2) { transform: rotate(7deg) translateX(10px) translateY(-10px); }
+.bucket-card:hover .deck-card:nth-child(3) { transform: rotate(-1deg) translateY(0px); }
+.bucket-card:hover .bucket-cta-arrow { transform: translateX(3px); }
+.bucket-card:active { transform: translateY(-2px); }
+
+@keyframes bucket-enter {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Stacked deck */
+.bucket-deck {
+  position: relative;
+  height: 196px;
+  background: var(--bg-raised);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.deck-card {
+  position: absolute;
+  width: 118px; height: 150px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-subtle);
+  overflow: hidden;
+  box-shadow: 0 4px 16px oklch(0 0 0 / 0.12);
+  transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+/* stack positions: bottom to top */
+.deck-card:nth-child(1) {
+  transform: rotate(-7deg) translateX(-6px) translateY(4px);
+  z-index: 1; opacity: 0.72;
+}
+.deck-card:nth-child(2) {
+  transform: rotate(4deg) translateX(8px) translateY(-2px);
+  z-index: 2; opacity: 0.86;
+}
+.deck-card:nth-child(3) {
+  transform: rotate(-1deg);
+  z-index: 3; opacity: 1;
+}
+.deck-card-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.deck-card-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.deck-card-placeholder i { font-size: 28px; opacity: 0.25; color: var(--text-primary); }
+.deck-card--empty {
+  background: var(--bg-raised);
+  border-style: dashed;
+}
+
+/* Bucket metadata */
+.bucket-meta {
+  padding: 14px 16px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+.bucket-label-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.bucket-icon-wrap {
+  width: 24px; height: 24px; border-radius: 7px;
+  background: var(--color-accent-bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.bucket-icon-wrap i { font-size: 13px; color: var(--color-accent); }
+.bucket-label {
+  font-size: var(--text-sm); font-weight: 650;
+  letter-spacing: -0.01em; color: var(--text-primary);
+}
+.bucket-bottom-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.bucket-count {
+  font-size: var(--text-xs); color: var(--text-muted); font-weight: 500;
+}
+.bucket-cta {
+  display: flex; align-items: center; gap: 3px;
+  font-size: var(--text-xs); font-weight: 600; color: var(--color-accent);
+}
+.bucket-cta-arrow {
+  font-size: 11px;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-block;
+}
+
+/* Skeleton and empty */
+.buckets-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+.bucket-skeleton-card {
+  height: 256px; border-radius: 20px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.buckets-empty {
+  text-align: center; padding: 72px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  color: var(--text-muted);
+}
+.buckets-empty i { font-size: 40px; opacity: 0.3; }
+.buckets-empty p { font-size: var(--text-base); }
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
   .masonry-grid { gap: 24px; }
@@ -1204,9 +1480,13 @@ onBeforeUnmount(() => {
   .smart-input-wrap { max-width: 100%; }
   .smart-input { padding: 14px 120px 14px 44px; font-size: var(--text-sm); border-radius: 14px; }
 
-  /* Filters */
-  .filter-section { padding: 0 16px 20px; justify-content: flex-start; }
-  .filter-pills { max-width: 100%; }
+  /* View switcher */
+  .view-switcher-section { padding: 0 16px 20px; }
+
+  /* Buckets */
+  .buckets-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .bucket-deck { height: 156px; }
+  .deck-card { width: 96px; height: 120px; border-radius: 10px; }
 
   /* Grid — stable 2-col layout */
   .masonry-grid { gap: 12px; }
