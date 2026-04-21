@@ -107,10 +107,10 @@
           <div v-else class="buckets-grid">
             <button
               v-for="(bucket, bi) in sourceBuckets"
-              :key="bucket.type"
+              :key="bucket.id"
               class="bucket-card"
               :style="{ '--bucket-delay': `${bi * 55}ms` }"
-              @click="enterBucket(bucket.type)"
+              @click="enterBucket(bucket)"
             >
               <!-- 3D folder wrapper -->
               <div class="folder-container">
@@ -382,11 +382,16 @@ function setViewMode(mode: 'timeline' | 'categories') {
   viewMode.value = mode;
 }
 
-function enterBucket(type: string) {
-  // Navigate to timeline filtered by source type
-  navigateTo({ path: '/', query: { ...route.query, filter: type } });
+function enterBucket(bucket: typeof sourceBuckets.value[0]) {
+  if (bucket.isTag) {
+    navigateTo({ path: '/', query: { ...route.query, tag: bucket.type, filter: undefined } }, { replace: true });
+    activeFilter.value = 'all'; // Clear format filter
+  } else {
+    navigateTo({ path: '/', query: { ...route.query, filter: bucket.type, tag: undefined } }, { replace: true });
+    activeFilter.value = bucket.type;
+  }
   viewMode.value = 'timeline';
-  activeFilter.value = type;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 const sentinel = ref<HTMLElement | null>(null);
@@ -551,7 +556,8 @@ const SOURCE_TYPES = [
 const sourceBuckets = computed(() => {
   const sq = searchQuery.value.toLowerCase().trim();
   
-  return SOURCE_TYPES
+  // 1. Format folders (always on top)
+  const baseBuckets = SOURCE_TYPES
     .map(st => {
       const matches = cards.value.filter(c => cardType(c) === st.type);
       const previews = matches.slice(0, 3).map((c, i) => ({
@@ -560,7 +566,7 @@ const sourceBuckets = computed(() => {
         ogImage: c.ogImage,
         gradient: gradients[c.id % gradients.length] ?? gradients[i % gradients.length]!,
       }));
-      return { ...st, count: matches.length, previews };
+      return { ...st, id: `format-${st.type}`, count: matches.length, previews, isTag: false };
     })
     .filter(b => {
       if (b.count > 0) return true;
@@ -568,6 +574,50 @@ const sourceBuckets = computed(() => {
       if (sq && b.label.toLowerCase().includes(sq)) return true;
       return false;
     });
+
+  // 2. Dynamic Tag Folders
+  const tagMap = new Map<string, typeof cards.value>();
+  for (const c of cards.value) {
+    if (c.tags && c.tags.length > 0) {
+      for (const t of c.tags) {
+        // Exclude tags that overlap exactly with our base format buckets to avoid duplicate folders
+        if (SOURCE_TYPES.some(st => st.type === t.name.toLowerCase() || st.label.toLowerCase() === t.name.toLowerCase())) continue;
+        
+        if (!tagMap.has(t.name)) tagMap.set(t.name, []);
+        tagMap.get(t.name)!.push(c);
+      }
+    }
+  }
+
+  const tagBuckets = Array.from(tagMap.entries())
+    .map(([name, matches]) => {
+      const previews = matches.slice(0, 3).map((c, i) => ({
+        id: c.id,
+        title: c.title,
+        ogImage: c.ogImage,
+        gradient: gradients[c.id % gradients.length] ?? gradients[i % gradients.length]!,
+      }));
+      return {
+        id: `tag-${name}`,
+        type: name,
+        label: name.charAt(0).toUpperCase() + name.slice(1),
+        icon: 'ph-hash',
+        count: matches.length,
+        previews,
+        isTag: true
+      };
+    })
+    .filter(b => {
+      // Tags need at least 2 bookmarks to warrant a folder (prevents category spam)
+      if (b.count > 1) return true;
+      // UNLESS the user is actively searching for it
+      if (sq && b.label.toLowerCase().includes(sq)) return true;
+      return false;
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8); // Top 8 emerging topics
+
+  return [...baseBuckets, ...tagBuckets];
 });
 
 // ── Stable column assignment for masonry grid ─────────────────────────
