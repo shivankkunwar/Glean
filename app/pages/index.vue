@@ -1174,10 +1174,10 @@ onBeforeUnmount(() => {
   text-decoration: none;
 }
 
+.card:hover .card-open-link {
+  opacity: 1; transform: scale(1);
+}
 @media (hover: hover) and (pointer: fine) {
-  .card:hover .card-open-link {
-    opacity: 1; transform: scale(1);
-  }
   .card-open-link:hover {
     color: var(--color-accent) !important;
     background: var(--color-accent-bg);
@@ -1204,8 +1204,9 @@ onBeforeUnmount(() => {
   transition: opacity var(--d-fast) var(--ease-out), transform var(--d-fast) var(--ease-out);
 }
 
+.card:hover .card-action { opacity: 1; transform: scale(1) translateY(0); }
+
 @media (hover: hover) and (pointer: fine) {
-  .card:hover .card-action { opacity: 1; transform: scale(1) translateY(0); }
   .card-action:hover { color: oklch(55% 0.18 20) !important; transform: scale(1.15) !important; }
 }
 
@@ -1226,8 +1227,9 @@ onBeforeUnmount(() => {
   transition: opacity var(--d-fast) var(--ease-out), transform var(--d-fast);
 }
 
+.card:hover .note-card-actions { opacity: 1; transform: translateY(0); }
+
 @media (hover: hover) and (pointer: fine) {
-  .card:hover .note-card-actions { opacity: 1; transform: translateY(0); }
   .reading-action-btn.danger:hover { color: oklch(55% 0.18 20); }
 }
 .reading-action-btn.is-active-action { color: var(--color-accent); }
@@ -1263,9 +1265,7 @@ onBeforeUnmount(() => {
   display: grid; place-items: center; color: var(--text-primary); font-size: 22px;
   opacity: 0; transition: opacity var(--d-fast) var(--ease-out); box-shadow: var(--shadow-md);
 }
-@media (hover: hover) and (pointer: fine) {
-  .card--video:hover .play-btn { opacity: 1; }
-}
+.card--video:hover .play-btn { opacity: 1; }
 .duration-badge {
   position: absolute; bottom: 10px; right: 10px;
   background: oklch(13% 0.016 58 / 0.68); backdrop-filter: blur(6px);
