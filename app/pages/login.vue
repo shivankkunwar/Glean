@@ -16,6 +16,7 @@
         {{ isLoading ? 'Signing in…' : 'Sign in' }}
       </button>
 
+      <p class="login-hint">Works with the ADMIN_PASSWORD set in your environment.</p>
     </form>
   </section>
 </template>
